@@ -1,5 +1,5 @@
 # legendary-playmat-plugin
-Welcome!. This plugin is a work in progress and will be completed in several steps. Manual creation files for a 24 by 14 playmat are in plce now. Next step is to create a plugin to allow creation and placement of layers for any playmat size.
+Welcome!. This plugin is a work in progress and will be completed in several steps. Manual creation files for a 24 by 14 playmat are in place now. Next step is to create a plugin to allow creation and placement of layers for any playmat size.
 
 ## Using the manual creation files in gimp
 First thing to note here is that there are some example images I created under the `example_images` folder. I do not own any of these images and will remove them at the request of the creator or gladely link to their page. All were borrowed off of HD wallpaper pages.
