@@ -1,0 +1,10 @@
+{
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "python.linting.flake8Enabled": true,
+  "python.analysis.disabled": [
+    "unresolved-import"
+  ],
+  "files.trimFinalNewlines": true,
+  "python.defaultInterpreterPath": "/usr/lib/gimp/2.0/python",
+}
