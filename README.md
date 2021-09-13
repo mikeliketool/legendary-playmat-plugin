@@ -24,7 +24,7 @@ Right now there are two available options for download that are already in xcf f
 4. Click OK
 
 Right now what should happen is that the file is added to a layer and transformed to fill to the edge of the overall image.
-It should also draw the rightmost column.
+It should also draw all single cells and the HQ.
 
 `PLUGIN TO BE CONTINUED`
 

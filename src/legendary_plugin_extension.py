@@ -1,6 +1,6 @@
 from gimpfu import (pdb, gimp, RGBA_IMAGE, NORMAL_MODE, GRAYA_IMAGE, register, main, RGB, CHANNEL_OP_SUBTRACT,
                     BUCKET_FILL_BG, LAYER_MODE_NORMAL, PF_IMAGE, PF_COLOR, STROKE_LINE,
-                    PF_FILENAME, CHANNEL_OP_REPLACE, FILL_FOREGROUND, gimpcolor, TEXT_JUSTIFY_CENTER)
+                    PF_FILENAME, CHANNEL_OP_REPLACE, FILL_WHITE, gimpcolor, TEXT_JUSTIFY_CENTER)
 
 WHITE = gimpcolor.RGB(255, 255, 255)
 CELL_WIDTH = 375
@@ -8,6 +8,7 @@ CELL_HEIGHT = 525
 OPACITY = 25
 LABEL_HEIGHT = 65
 THICKNESS = 3
+HQ_HEIGHT = 600
 
 
 # get the type we want for our layer
@@ -125,13 +126,13 @@ def load_pic_and_transform_perspective(image, filename):
 
 
 # build out the cell label using the Percolator font and outline the text
-def draw_cell_label(image, group, label_text, top_left_x, top_left_y):
-    cell_label_layer = pdb.gimp_text_layer_new(image, label_text, 'Percolator Medium', 54, 0)
+def draw_label(image, group, label_text, font_size, top_left_x, top_left_y, width, height):
+    cell_label_layer = pdb.gimp_text_layer_new(image, label_text, 'Percolator Medium', font_size, 0)
     pdb.gimp_image_insert_layer(image, cell_label_layer, group, 0)
     pdb.gimp_text_layer_set_antialias(cell_label_layer, 1)
     pdb.gimp_text_layer_set_justification(cell_label_layer, TEXT_JUSTIFY_CENTER)
     pdb.gimp_text_layer_set_color(cell_label_layer, WHITE)
-    pdb.gimp_text_layer_resize(cell_label_layer, CELL_WIDTH, LABEL_HEIGHT)
+    pdb.gimp_text_layer_resize(cell_label_layer, width, height)
     pdb.gimp_layer_set_offsets(cell_label_layer, top_left_x, top_left_y)
     pdb.gimp_drawable_set_visible(cell_label_layer, True)
     return cell_label_layer
@@ -147,15 +148,8 @@ def draw_cell(image, group, label_text, top_left_x, top_left_y):
     pdb.gimp_image_select_round_rectangle(image, CHANNEL_OP_REPLACE, top_left_x, top_left_y + LABEL_HEIGHT,
                                           CELL_WIDTH, CELL_HEIGHT, radius, radius)
 
-    pdb.gimp_context_set_foreground(WHITE)
-    pdb.gimp_context_set_opacity(OPACITY)
-    pdb.gimp_context_set_paint_mode(LAYER_MODE_NORMAL)
-    pdb.gimp_context_set_stroke_method(STROKE_LINE)
-    pdb.gimp_context_set_line_width(3)
-    pdb.gimp_context_set_antialias(1)
-
     pdb.gimp_drawable_edit_stroke_selection(cell_layer)
-    pdb.gimp_drawable_edit_fill(cell_layer, FILL_FOREGROUND)
+    pdb.gimp_drawable_edit_fill(cell_layer, FILL_WHITE)
     pdb.plug_in_autocrop_layer(image, cell_layer)
     clear_selection(image)
 
@@ -165,22 +159,72 @@ def draw_single_cell_with_label(image, label_text, top_left_x, top_left_y, color
     group.name = "{}_group".format(label_text)
     pdb.gimp_image_insert_layer(image, group, None, 0)
 
-    cell_label_layer = draw_cell_label(image, group, label_text, top_left_x, top_left_y)
+    if len(label_text) > 0:
+        cell_label_layer = draw_label(image, group, label_text, 54, top_left_x, top_left_y, CELL_WIDTH, LABEL_HEIGHT)
+        do_text_outline(image, cell_label_layer, color, THICKNESS, 0)
     draw_cell(image, group, label_text, top_left_x, top_left_y)
-    do_text_outline(image, cell_label_layer, color, THICKNESS, 0)
 
 
-def build_legendary_playmat(image, filename, color):
+def draw_hq(image, color, top_left_x, top_left_y):
+    HQ_WIDTH = 2070
+    group = gimp.GroupLayer(image)
+    group.name = "HQ_group"
+    pdb.gimp_image_insert_layer(image, group, None, 0)
+    hq_layer = gimp.Layer(image, "HQ", image.width, image.height, get_layer_type(image),
+                          100, NORMAL_MODE)
+    pdb.gimp_image_insert_layer(image, hq_layer, group, 0)
+    pdb.gimp_image_select_rectangle(image, CHANNEL_OP_REPLACE, top_left_x, top_left_y,
+                                    HQ_WIDTH, HQ_HEIGHT)
+    pdb.gimp_drawable_edit_stroke_selection(hq_layer)
+    pdb.gimp_drawable_edit_fill(hq_layer, FILL_WHITE)
+    pdb.plug_in_autocrop_layer(image, hq_layer)
+    clear_selection(image)
+    hq_label_layer = draw_label(image, group, 'HQ', 150, top_left_x, top_left_y, HQ_WIDTH, 150)
+    do_text_outline(image, hq_label_layer, color, THICKNESS, 0)
+
+
+def draw_legendary_playmat_28_by_14(image, filename, color):
     ROW_GAP = 85
+    COLUMN_GAP = 70
+    OUTSIDE_GAP = 115
+    MAIN_SECTION_GAP = 162.5
     SINGLE_CELL_WITH_LABEL_HEIGHT = CELL_HEIGHT + LABEL_HEIGHT
     FIRST_COLUMN_X = 115
     FIRST_ROW_Y = 115
     SECOND_ROW_Y = FIRST_ROW_Y + SINGLE_CELL_WITH_LABEL_HEIGHT + ROW_GAP
     THIRD_ROW_Y = SECOND_ROW_Y + SINGLE_CELL_WITH_LABEL_HEIGHT + ROW_GAP
+    SECOND_COLUMN_X = FIRST_COLUMN_X + CELL_WIDTH + COLUMN_GAP
+    LAST_COLUMN_X = image.width - OUTSIDE_GAP - CELL_WIDTH
+    SECOND_LAST_COLUMN_X = LAST_COLUMN_X - CELL_WIDTH - COLUMN_GAP
+    gimp.progress_init("Drawing playmat")
     load_pic_and_transform_perspective(image, filename)
-    draw_single_cell_with_label(image, 'Scheme', FIRST_COLUMN_X, FIRST_ROW_Y, color)
+    gimp.progress_update(0.10)
+    pdb.gimp_context_set_foreground(WHITE)
+    pdb.gimp_context_set_opacity(OPACITY)
+    pdb.gimp_context_set_paint_mode(LAYER_MODE_NORMAL)
+    pdb.gimp_context_set_stroke_method(STROKE_LINE)
+    pdb.gimp_context_set_line_width(3)
+    pdb.gimp_context_set_antialias(1)
+    draw_single_cell_with_label(image, '', FIRST_COLUMN_X, FIRST_ROW_Y, color)
     draw_single_cell_with_label(image, 'Mastermind', FIRST_COLUMN_X, SECOND_ROW_Y, color)
-    draw_single_cell_with_label(image, 'S.H.E.I.L.D.', FIRST_COLUMN_X, THIRD_ROW_Y, color)
+    draw_single_cell_with_label(image, 'Scheme', FIRST_COLUMN_X, THIRD_ROW_Y, color)
+    gimp.progress_update(0.20)
+    draw_single_cell_with_label(image, 'Escaped', SECOND_COLUMN_X, FIRST_ROW_Y, color)
+    draw_single_cell_with_label(image, 'Strikes', SECOND_COLUMN_X, SECOND_ROW_Y, color)
+    draw_single_cell_with_label(image, 'Twists', SECOND_COLUMN_X, THIRD_ROW_Y, color)
+    gimp.progress_update(0.40)
+    draw_single_cell_with_label(image, 'Bystanders', LAST_COLUMN_X, FIRST_ROW_Y, color)
+    draw_single_cell_with_label(image, 'S.H.E.I.L.D.', LAST_COLUMN_X, SECOND_ROW_Y, color)
+    draw_single_cell_with_label(image, 'Sidekicks', LAST_COLUMN_X, THIRD_ROW_Y, color)
+    gimp.progress_update(0.60)
+    draw_single_cell_with_label(image, 'Wounds', SECOND_LAST_COLUMN_X, FIRST_ROW_Y, color)
+    draw_single_cell_with_label(image, 'Villian Deck', SECOND_LAST_COLUMN_X, SECOND_ROW_Y, color)
+    draw_single_cell_with_label(image, 'Hero Deck', SECOND_LAST_COLUMN_X, THIRD_ROW_Y, color)
+    gimp.progress_update(0.80)
+    hq_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
+    hq_y = image.height - OUTSIDE_GAP - HQ_HEIGHT
+    draw_hq(image, color, hq_x, hq_y)
+    gimp.progress_update(1)
 
 
 register(
@@ -193,10 +237,10 @@ register(
   [                                                         # Parameters
       (PF_IMAGE, "image", "Takes current image", None),
       (PF_FILENAME, "filename", "Filename", None),
-      (PF_COLOR, "color", "Single Cell Color", (0, 0, 0))
+      (PF_COLOR, "color", "Label Outline Color", (0, 0, 0))
   ],
   [],                                                      # output / return parameters
-  build_legendary_playmat,                                 # python function that will be called
+  draw_legendary_playmat_28_by_14,                         # python function that will be called
   menu="<Image>/Filters/Legendary"
 )
 
