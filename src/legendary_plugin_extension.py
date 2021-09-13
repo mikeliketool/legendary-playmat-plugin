@@ -1,11 +1,10 @@
 from gimpfu import (pdb, gimp, RGBA_IMAGE, NORMAL_MODE, GRAYA_IMAGE, register, main, RGB, CHANNEL_OP_SUBTRACT,
-                    BUCKET_FILL_BG, LAYER_MODE_NORMAL, PF_IMAGE, PF_COLOR, STROKE_LINE,
+                    BUCKET_FILL_BG, LAYER_MODE_NORMAL, PF_IMAGE, PF_COLOR, STROKE_LINE, PF_INT,
                     PF_FILENAME, CHANNEL_OP_REPLACE, FILL_WHITE, gimpcolor, TEXT_JUSTIFY_CENTER)
 
 WHITE = gimpcolor.RGB(255, 255, 255)
 CELL_WIDTH = 375
 CELL_HEIGHT = 525
-OPACITY = 25
 LABEL_HEIGHT = 65
 THICKNESS = 3
 HQ_HEIGHT = 600
@@ -183,7 +182,7 @@ def draw_hq(image, color, top_left_x, top_left_y):
     do_text_outline(image, hq_label_layer, color, THICKNESS, 0)
 
 
-def draw_legendary_playmat_28_by_14(image, filename, color):
+def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
     ROW_GAP = 85
     COLUMN_GAP = 70
     OUTSIDE_GAP = 115
@@ -200,7 +199,7 @@ def draw_legendary_playmat_28_by_14(image, filename, color):
     load_pic_and_transform_perspective(image, filename)
     gimp.progress_update(0.10)
     pdb.gimp_context_set_foreground(WHITE)
-    pdb.gimp_context_set_opacity(OPACITY)
+    pdb.gimp_context_set_opacity(opacity)
     pdb.gimp_context_set_paint_mode(LAYER_MODE_NORMAL)
     pdb.gimp_context_set_stroke_method(STROKE_LINE)
     pdb.gimp_context_set_line_width(3)
@@ -237,6 +236,7 @@ register(
   [                                                         # Parameters
       (PF_IMAGE, "image", "Takes current image", None),
       (PF_FILENAME, "filename", "Filename", None),
+      (PF_INT, "opacity", "Opacity of Cells", 15),
       (PF_COLOR, "color", "Label Outline Color", (0, 0, 0))
   ],
   [],                                                      # output / return parameters
