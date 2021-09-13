@@ -18,11 +18,13 @@ Right now there are two available options for download that are already in xcf f
 
 ## Drawing a full playmat
 1. Open GIMP and select File > Open. Select an xcf file
-2. From the menu in GIMP select Filters > Legendary > Draw Playmat
+2. From the menu in GIMP select Filters > Legendary > Draw 28in x 14in Playmat
 3. Next to the Filename widget select the file icon. Browse to an image file on your system and select it. Click save.
+4. Select the colour you want for the text outline for the cell labels (Scheme, Mastermind, etc)
 4. Click OK
 
 Right now what should happen is that the file is added to a layer and transformed to fill to the edge of the overall image.
+It should also draw the rightmost column.
 
 `PLUGIN TO BE CONTINUED`
 
