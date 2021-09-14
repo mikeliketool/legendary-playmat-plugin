@@ -14,7 +14,7 @@ Welcome!. This plugin will allow you to create either 28in x 14in or 24in x 14in
 5. Restart GIMP.
 
 ## Picking a starting base
-Right now there are two available options for download that are already in xcf format: [24 by 14](https://legendary-playmat-templates.s3.amazonaws.com/24_by_14_base_template.xcf) and [28 by 14](https://legendary-playmat-templates.s3.amazonaws.com/28_by_14_base_template.xcf). You can always download another sized template from inked gaming and convert it to an xcf file by importing it into gimp.
+Right now there are two available options for download that are already in xcf format: [24 by 14](https://legendary-playmat-templates.s3.amazonaws.com/24_by_14_base_template.xcf) and [28 by 14](https://legendary-playmat-templates.s3.amazonaws.com/28_by_14_base_template.xcf).
 
 ## Drawing a full playmat
 1. Open GIMP and select File > Open. Select an xcf file
