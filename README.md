@@ -1,5 +1,5 @@
 # legendary-playmat-plugin
-Welcome!. This plugin is a work in progress and will be completed in several steps. Manual creation files for a 24 by 14 playmat are in place now. Next step is to create a plugin to allow creation and placement of layers for any playmat size.
+Welcome!. This plugin will allow you to create either 28in x 14in or 24in x 14in Legendary playmats.
 
 ### Setup
 1. Might have to fix plugins for Ubuntu 20.04: https://bugs.launchpad.net/ubuntu/+source/gimp/+bug/1881684
@@ -23,6 +23,7 @@ Right now there are two available options for download that are already in xcf f
 4. Select the colour you want for the text outline for the cell labels (Scheme, Mastermind, etc)
 5. You may also change how opaque the cells in the playmat are if you wish.
 6. Click OK
-
+7. Once the playmat is rendered select File > Export. Give your file a name and make sure it's ok jpg extension.
+8. Enjoy!
 
 [Manual Creation Instructions](./docs/manual_creation.md)
