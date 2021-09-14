@@ -24,6 +24,5 @@ Right now there are two available options for download that are already in xcf f
 5. You may also change how opaque the cells in the playmat are if you wish.
 6. Click OK
 
-`PLUGIN TO BE CONTINUED`
 
 [Manual Creation Instructions](./docs/manual_creation.md)

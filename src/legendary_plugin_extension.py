@@ -238,14 +238,12 @@ def draw_single_cells(image, single_cells, color, progress):
         gimp.progress_update(progress)
 
 
-def draw_hq_and_city(image, color):
-    hq_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
+def draw_hq_and_city(image, color, large_cell_x):
     hq_y = image.height - OUTSIDE_GAP - LARGE_CELL_HEIGHT
-    draw_large_cell(image, color, 'HQ', hq_x, hq_y)
+    draw_large_cell(image, color, 'HQ', large_cell_x, hq_y)
     gimp.progress_update(0.75)
-    city_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
     city_y = hq_y - ROW_GAP - LARGE_CELL_HEIGHT
-    draw_city(image, color, city_x, city_y)
+    draw_city(image, color, large_cell_x, city_y)
     gimp.progress_update(1)
 
 
@@ -263,11 +261,31 @@ def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
                     ('Villian Deck', SECOND_LAST_COLUMN_X, SECOND_ROW_Y,),
                     ('Hero Deck', SECOND_LAST_COLUMN_X, THIRD_ROW_Y,)]
     draw_single_cells(image, single_cells, color, progress)
-    draw_hq_and_city(image, color)
+    large_cell_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
+    draw_hq_and_city(image, color, large_cell_x)
+
+
+def draw_legendary_playmat_24_by_14(image, filename, opacity, color):
+    LAST_COLUMN_X = image.width - OUTSIDE_GAP - CELL_WIDTH
+    SECOND_LAST_COLUMN_X = LAST_COLUMN_X - CELL_WIDTH - COLUMN_GAP
+    THIRD_COLUMN_X = SECOND_COLUMN_X + CELL_WIDTH + COLUMN_GAP
+
+    progress = initialize(image, opacity, filename)
+    gimp.progress_update(progress)
+
+    single_cells = [('Scheme', OUTSIDE_GAP, OUTSIDE_GAP,), ('Mastermind', OUTSIDE_GAP, SECOND_ROW_Y,),
+                    ('S.H.E.I.L.D.', OUTSIDE_GAP, THIRD_ROW_Y,), ('Twists', SECOND_COLUMN_X, OUTSIDE_GAP,),
+                    ('Strikes', SECOND_COLUMN_X, SECOND_ROW_Y,), ('Sidekicks', SECOND_COLUMN_X, THIRD_ROW_Y,),
+                    ('Bystanders', LAST_COLUMN_X, OUTSIDE_GAP,), ('Villian Deck', LAST_COLUMN_X, SECOND_ROW_Y,),
+                    ('Hero Deck', LAST_COLUMN_X, THIRD_ROW_Y,), ('Wounds', SECOND_LAST_COLUMN_X, OUTSIDE_GAP,),
+                    ('Escaped', THIRD_COLUMN_X, OUTSIDE_GAP,)]
+    draw_single_cells(image, single_cells, color, progress)
+    large_cell_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP * 2 + 15
+    draw_hq_and_city(image, color, large_cell_x)
 
 
 register(
-  "draw-full-legendary-playmat",                            # procedure name for whatever
+  "draw-28in-by-14in-legendary-playmat",                    # procedure name for whatever
   "Draw 28in x 14in Playmat",                               # blurb
   "Generate a Legendary playmat.",                          # help message
   "Mike F", "Mike F", "Sept 2021",                          # author, copyright, year
@@ -281,6 +299,25 @@ register(
   ],
   [],                                                      # output / return parameters
   draw_legendary_playmat_28_by_14,                         # python function that will be called
+  menu="<Image>/Filters/Legendary"
+)
+
+
+register(
+  "draw-24in-by-14in-legendary-playmat",                            # procedure name for whatever
+  "Draw 24in x 14in Playmat",                               # blurb
+  "Generate a Legendary playmat.",                          # help message
+  "Mike F", "Mike F", "Sept 2021",                          # author, copyright, year
+  "Draw 24in x 14in Playmat",                               # menu name
+  "*",                                                      # type of images we accept
+  [                                                         # Parameters
+      (PF_IMAGE, "image", "Takes current image", None),
+      (PF_FILENAME, "filename", "Filename", None),
+      (PF_INT, "opacity", "Opacity of Cells", 15),
+      (PF_COLOR, "color", "Label Outline Color", (0, 0, 0))
+  ],
+  [],                                                      # output / return parameters
+  draw_legendary_playmat_24_by_14,                         # python function that will be called
   menu="<Image>/Filters/Legendary"
 )
 
