@@ -9,6 +9,14 @@ LABEL_HEIGHT = 65
 THICKNESS = 3
 LARGE_CELL_HEIGHT = 600
 LARGE_CELL_WIDTH = 2070
+ROW_GAP = 85
+COLUMN_GAP = 70
+OUTSIDE_GAP = 115
+MAIN_SECTION_GAP = 162.5
+SINGLE_CELL_WITH_LABEL_HEIGHT = CELL_HEIGHT + LABEL_HEIGHT
+SECOND_ROW_Y = OUTSIDE_GAP + SINGLE_CELL_WITH_LABEL_HEIGHT + ROW_GAP
+THIRD_ROW_Y = SECOND_ROW_Y + SINGLE_CELL_WITH_LABEL_HEIGHT + ROW_GAP
+SECOND_COLUMN_X = OUTSIDE_GAP + CELL_WIDTH + COLUMN_GAP
 
 
 # get the type we want for our layer
@@ -138,11 +146,11 @@ def draw_label(image, group, color, label_text, font_size, top_left_x, top_left_
     do_text_outline(image, cell_label_layer, color, THICKNESS, 0)
 
 
-def finish_selection(image, layer):
+def finish_selection(image, layer, fill=True):
     pdb.gimp_drawable_edit_stroke_selection(layer)
-    pdb.gimp_drawable_edit_fill(layer, FILL_WHITE)
+    if fill:
+        pdb.gimp_drawable_edit_fill(layer, FILL_WHITE)
     clear_selection(image)
-    pdb.plug_in_autocrop_layer(image, layer)
 
 
 def draw_cell(image, group, label_text, top_left_x, top_left_y):
@@ -155,6 +163,7 @@ def draw_cell(image, group, label_text, top_left_x, top_left_y):
     pdb.gimp_image_select_round_rectangle(image, CHANNEL_OP_REPLACE, top_left_x, top_left_y + LABEL_HEIGHT,
                                           CELL_WIDTH, CELL_HEIGHT, radius, radius)
     finish_selection(image, cell_layer)
+    pdb.plug_in_autocrop_layer(image, cell_layer)
 
 
 def create_group_layer(image, text):
@@ -180,31 +189,72 @@ def draw_large_cell(image, color, text, top_left_x, top_left_y):
                                     LARGE_CELL_WIDTH, LARGE_CELL_HEIGHT)
     finish_selection(image, large_layer)
     draw_label(image, group, color, text, 150, top_left_x, top_left_y, LARGE_CELL_WIDTH, 150)
+    return large_layer, group
 
 
-def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
-    ROW_GAP = 85
-    COLUMN_GAP = 70
-    OUTSIDE_GAP = 115
-    MAIN_SECTION_GAP = 162.5
-    SINGLE_CELL_WITH_LABEL_HEIGHT = CELL_HEIGHT + LABEL_HEIGHT
-    SECOND_ROW_Y = OUTSIDE_GAP + SINGLE_CELL_WITH_LABEL_HEIGHT + ROW_GAP
-    THIRD_ROW_Y = SECOND_ROW_Y + SINGLE_CELL_WITH_LABEL_HEIGHT + ROW_GAP
-    SECOND_COLUMN_X = OUTSIDE_GAP + CELL_WIDTH + COLUMN_GAP
-    LAST_COLUMN_X = image.width - OUTSIDE_GAP - CELL_WIDTH
-    SECOND_LAST_COLUMN_X = LAST_COLUMN_X - CELL_WIDTH - COLUMN_GAP
+def draw_city(image, color, city_x, city_y):
+    city_layer, group = draw_large_cell(image, color, 'City', city_x, city_y)
+    city_space_size = LARGE_CELL_WIDTH / 5
+    label_y_position = city_y + LARGE_CELL_HEIGHT * 0.75
+    current_x_pos = city_x
+    for i in range(0, 4):
+        current_x_pos += city_space_size
+        pdb.gimp_image_select_rectangle(image, CHANNEL_OP_REPLACE, current_x_pos, city_y, 1, LARGE_CELL_HEIGHT)
+        finish_selection(image, city_layer)
 
-    gimp.progress_init("Drawing playmat")
-    load_pic_and_transform_perspective(image, filename)
-    progress = 0.10
-    gimp.progress_update(progress)
+    gimp.progress_update(0.80)
+    label_box_height = LARGE_CELL_HEIGHT / 4
+    pdb.gimp_image_select_rectangle(image, CHANNEL_OP_REPLACE, city_x, label_y_position,
+                                    LARGE_CELL_WIDTH, label_box_height)
+    finish_selection(image, city_layer, False)
+    pdb.plug_in_autocrop_layer(image, city_layer)
 
+    city_labels = ['Bridge', 'Streets', 'Rooftops', 'Bank', 'Sewers']
+    gimp.progress_update(0.90)
+    current_x_pos = city_x
+    for city_label in city_labels:
+        draw_label(image, group, color, city_label, 54, current_x_pos, label_y_position + label_box_height / 3,
+                   city_space_size, label_box_height)
+        current_x_pos += city_space_size
+
+
+def initialize(image, opacity, filename):
     pdb.gimp_context_set_foreground(WHITE)
     pdb.gimp_context_set_opacity(opacity)
     pdb.gimp_context_set_paint_mode(LAYER_MODE_NORMAL)
     pdb.gimp_context_set_stroke_method(STROKE_LINE)
     pdb.gimp_context_set_line_width(3)
     pdb.gimp_context_set_antialias(1)
+    gimp.progress_init("Drawing playmat")
+    load_pic_and_transform_perspective(image, filename)
+    progress = 0.10
+    return progress
+
+
+def draw_single_cells(image, single_cells, color, progress):
+    for single_cell in single_cells:
+        draw_single_cell_with_label(image, single_cell[0], single_cell[1], single_cell[2], color)
+        progress += 0.05
+        gimp.progress_update(progress)
+
+
+def draw_hq_and_city(image, color):
+    hq_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
+    hq_y = image.height - OUTSIDE_GAP - LARGE_CELL_HEIGHT
+    draw_large_cell(image, color, 'HQ', hq_x, hq_y)
+    gimp.progress_update(0.75)
+    city_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
+    city_y = hq_y - ROW_GAP - LARGE_CELL_HEIGHT
+    draw_city(image, color, city_x, city_y)
+    gimp.progress_update(1)
+
+
+def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
+    LAST_COLUMN_X = image.width - OUTSIDE_GAP - CELL_WIDTH
+    SECOND_LAST_COLUMN_X = LAST_COLUMN_X - CELL_WIDTH - COLUMN_GAP
+    progress = initialize(image, opacity, filename)
+    gimp.progress_update(progress)
+
     single_cells = [('', OUTSIDE_GAP, OUTSIDE_GAP,), ('Mastermind', OUTSIDE_GAP, SECOND_ROW_Y,),
                     ('Scheme', OUTSIDE_GAP, THIRD_ROW_Y,), ('Escaped', SECOND_COLUMN_X, OUTSIDE_GAP,),
                     ('Strikes', SECOND_COLUMN_X, SECOND_ROW_Y,), ('Twists', SECOND_COLUMN_X, THIRD_ROW_Y,),
@@ -212,18 +262,8 @@ def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
                     ('Sidekicks', LAST_COLUMN_X, THIRD_ROW_Y,), ('Wounds', SECOND_LAST_COLUMN_X, OUTSIDE_GAP,),
                     ('Villian Deck', SECOND_LAST_COLUMN_X, SECOND_ROW_Y,),
                     ('Hero Deck', SECOND_LAST_COLUMN_X, THIRD_ROW_Y,)]
-    for single_cell in single_cells:
-        draw_single_cell_with_label(image, single_cell[0], single_cell[1], single_cell[2], color)
-        progress += 0.05
-        gimp.progress_update(progress)
-    hq_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
-    hq_y = image.height - OUTSIDE_GAP - LARGE_CELL_HEIGHT
-    draw_large_cell(image, color, 'HQ', hq_x, hq_y)
-    gimp.progress_update(0.75)
-    city_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
-    city_y = hq_y - ROW_GAP - LARGE_CELL_HEIGHT
-    draw_large_cell(image, color, 'City', city_x, city_y)
-    gimp.progress_update(1)
+    draw_single_cells(image, single_cells, color, progress)
+    draw_hq_and_city(image, color)
 
 
 register(
