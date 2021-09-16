@@ -26,4 +26,12 @@ Right now there are two available options for download that are already in xcf f
 7. Once the playmat is rendered select File > Export. Give your file a name and make sure it's ok jpg extension.
 8. Enjoy!
 
+## Replacing a Layer Group
+You may want to change the text of a single cell lable. To do so do the following:
+1. Select the layer group you want to replace
+2. Select Filters > Legendary > Replace Single Cell Layer Group
+3. Enter the new name you want
+4. Click OK
+
+
 [Manual Creation Instructions](./docs/manual_creation.md)

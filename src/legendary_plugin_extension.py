@@ -1,6 +1,6 @@
 from gimpfu import (pdb, gimp, RGBA_IMAGE, NORMAL_MODE, GRAYA_IMAGE, register, main, RGB, CHANNEL_OP_SUBTRACT,
-                    BUCKET_FILL_BG, LAYER_MODE_NORMAL, PF_IMAGE, PF_COLOR, STROKE_LINE, PF_INT,
-                    PF_FILENAME, CHANNEL_OP_REPLACE, FILL_WHITE, gimpcolor, TEXT_JUSTIFY_CENTER)
+                    BUCKET_FILL_BG, LAYER_MODE_NORMAL, PF_IMAGE, PF_COLOR, STROKE_LINE, PF_INT, PF_BOOL,
+                    PF_FILENAME, CHANNEL_OP_REPLACE, FILL_WHITE, gimpcolor, TEXT_JUSTIFY_CENTER, PF_STRING)
 
 WHITE = gimpcolor.RGB(255, 255, 255)
 CELL_WIDTH = 375
@@ -83,9 +83,9 @@ def color_pop_bg():
     return __saved_colors_bg.pop()
 
 
-def set_bg_stack(newColor):
+def set_bg_stack(new_color):
     color_push_bg(gimp.get_background())
-    gimp.set_background(newColor)
+    gimp.set_background(new_color)
 
 
 def restore_bg_stack():
@@ -247,7 +247,7 @@ def draw_hq_and_city(image, color, large_cell_x):
     gimp.progress_update(1)
 
 
-def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
+def draw_legendary_playmat_28_by_14(image, filename, opacity, color, include_extra_cell):
     LAST_COLUMN_X = image.width - OUTSIDE_GAP - CELL_WIDTH
     SECOND_LAST_COLUMN_X = LAST_COLUMN_X - CELL_WIDTH - COLUMN_GAP
     progress = initialize(image, opacity, filename)
@@ -260,6 +260,8 @@ def draw_legendary_playmat_28_by_14(image, filename, opacity, color):
                     ('Sidekicks', LAST_COLUMN_X, THIRD_ROW_Y,), ('Wounds', SECOND_LAST_COLUMN_X, OUTSIDE_GAP,),
                     ('Villian Deck', SECOND_LAST_COLUMN_X, SECOND_ROW_Y,),
                     ('Hero Deck', SECOND_LAST_COLUMN_X, THIRD_ROW_Y,)]
+    if include_extra_cell is False:
+        single_cells.pop(0)
     draw_single_cells(image, single_cells, color, progress)
     large_cell_x = OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
     draw_hq_and_city(image, color, large_cell_x)
@@ -284,6 +286,19 @@ def draw_legendary_playmat_24_by_14(image, filename, opacity, color):
     draw_hq_and_city(image, color, large_cell_x)
 
 
+def redraw_single_cell_layer_group(image, new_cell_label_text, color):
+    active_layer_group = pdb.gimp_image_get_active_layer(image)
+    print(active_layer_group.name)
+    child_ids = pdb.gimp_item_get_children(active_layer_group)[1]
+    print(child_ids)
+    label_layer = gimp.Item.from_id(child_ids[0])
+    print(label_layer.name)
+    print(label_layer.offsets)
+    x, y = label_layer.offsets
+    pdb.gimp_image_remove_layer(image, active_layer_group)
+    draw_single_cell_with_label(image, new_cell_label_text, x, y, color)
+
+
 register(
   "draw-28in-by-14in-legendary-playmat",                    # procedure name for whatever
   "Draw 28in x 14in Playmat",                               # blurb
@@ -294,8 +309,9 @@ register(
   [                                                         # Parameters
       (PF_IMAGE, "image", "Takes current image", None),
       (PF_FILENAME, "filename", "Filename", None),
-      (PF_INT, "opacity", "Opacity of Cells", 15),
-      (PF_COLOR, "color", "Label Outline Color", (0, 0, 0))
+      (PF_INT, "opacity", "Opacity of Cells", 20),
+      (PF_COLOR, "color", "Label Text Outline Color", (0, 0, 0)),
+      (PF_BOOL, 'include_extra_cell', "Include Extra Cell in Top Left", True)
   ],
   [],                                                      # output / return parameters
   draw_legendary_playmat_28_by_14,                         # python function that will be called
@@ -314,10 +330,28 @@ register(
       (PF_IMAGE, "image", "Takes current image", None),
       (PF_FILENAME, "filename", "Filename", None),
       (PF_INT, "opacity", "Opacity of Cells", 15),
-      (PF_COLOR, "color", "Label Outline Color", (0, 0, 0))
+      (PF_COLOR, "color", "Label Text Outline Color", (0, 0, 0))
   ],
   [],                                                      # output / return parameters
   draw_legendary_playmat_24_by_14,                         # python function that will be called
+  menu="<Image>/Filters/Legendary"
+)
+
+
+register(
+  "replace-single-cell-layer-group",                                # procedure name for whatever
+  "Replace a single cell layer group",                              # blurb
+  "Replace a single cell layer group (ie change the name)",         # help message
+  "Mike F", "Mike F", "Sept 2021",                                  # author, copyright, year
+  "Replace Single Cell Layer Group",                                # menu name
+  "*",                                                              # type of images we accept
+  [                                                                 # Parameters
+      (PF_IMAGE, "image", "Takes current image", None),
+      (PF_STRING, 'new_cell_label_text', 'New Cell Label Text', ''),
+      (PF_COLOR, "color", "Label Text Outline Color", (0, 0, 0))
+  ],
+  [],                                                               # output / return parameters
+  redraw_single_cell_layer_group,                                   # python function that will be called
   menu="<Image>/Filters/Legendary"
 )
 
