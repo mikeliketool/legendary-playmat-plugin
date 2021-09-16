@@ -20,17 +20,19 @@ Right now there are two available options for download that are already in xcf f
 1. Open GIMP and select File > Open. Select an xcf file
 2. From the menu in GIMP select Filters > Legendary > Draw 28in x 14in Playmat (or the 24 inch option if you prefer)
 3. Next to the Filename widget select the file icon. Browse to an image file on your system and select it. Click save.
-4. Select the colour you want for the text outline for the cell labels (Scheme, Mastermind, etc)
-5. You may also change how opaque the cells in the playmat are if you wish.
-6. Click OK
-7. Once the playmat is rendered select File > Export. Give your file a name and make sure it's ok jpg extension.
-8. Enjoy!
+4. You may update how opaque you want your cells (1-100)
+5. You may pick a font for your playmat.
+6. Select the colour you want for the text outline for the cell labels (Scheme, Mastermind, etc)
+7. Click OK
+8. Once the playmat is rendered select File > Export. Give your file a name and make sure it's ok jpg extension.
+9. Enjoy!
 
 ## Replacing a Layer Group
 You may want to change the text of a single cell lable. To do so do the following:
 1. Select the layer group you want to replace
 2. Select Filters > Legendary > Replace Single Cell Layer Group
-3. Enter the new name you want
+3. Enter the new name you want.
+4. You may also change the outline color and the font if you like.
 4. Click OK
 
 
