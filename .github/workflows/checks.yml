@@ -1,0 +1,42 @@
+# Lint, type-check, and test the GIMP 3 plugin on every pull request, with the same uv commands used locally.
+# The old GIMP 2 script, src/legendary_plugin_extension.py, isn't checked. It's deleted later in the GIMP 3 move.
+name: Checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          version: "0.13.8"
+          python-version: "3.14"
+          # Nothing here declares dependencies for the cache to key on, and the tools install in seconds.
+          enable-cache: false
+
+      - name: Install tools
+        run: |
+          uv venv
+          uv pip install pytest==9.2.0 ruff==0.17.6 mypy==2.4.1
+
+      - name: Ruff lint
+        run: uv run --no-project ruff check --line-length 120 src/legendary-playmat tests
+
+      - name: Ruff format
+        run: uv run --no-project ruff format --check --line-length 120 src/legendary-playmat tests
+
+      - name: Mypy
+        run: uv run --no-project mypy --strict src/legendary-playmat tests
+
+      - name: Pytest
+        run: uv run --no-project pytest tests
