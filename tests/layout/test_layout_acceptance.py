@@ -7,12 +7,12 @@ src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
 
 import pytest
 from layout.transforms import find_cell, layout_for
-from print_spec.structs import (
-    Mat,
+from printing_spec.consts import Mat
+from printing_spec.structs import (
     MatBox,
     PrintSettings,
 )
-from print_spec.transforms import to_canvas
+from printing_spec.transforms import to_canvas
 
 CELL_WIDTH = 375
 CELL_HEIGHT = 525
