@@ -28,10 +28,6 @@ def all_boxes(layout: Layout) -> list[Rect]:
     return [*boxes, layout.hq.outline, layout.hq.title_box]
 
 
-# Inches typed as decimals aren't exact in binary floating point, so their products can land just below a whole or
-# half pixel. The rule must still treat them as the whole or half pixel they are on paper.
-
-
 @pytest.mark.parametrize(("dpi", "bleed", "expected"), [(200, 0.29, 58), (180, 0.35, 63)])
 def test_trim_offset_is_not_shifted_by_floating_point_error(dpi: int, bleed: float, expected: int) -> None:
     # 0.29 x 200 is 57.99999999999999 in floating point.
@@ -47,9 +43,6 @@ def test_zero_bleed_makes_the_canvas_the_trim_size() -> None:
     settings = PrintSettings(dpi=150, bleed=0.0)
     assert canvas_size(Mat.STANDARD, settings) == (3600, 2100)
     assert trim_offset(settings) == 0
-
-
-# Settings errors say what's allowed.
 
 
 @pytest.mark.parametrize("dpi", [149, 601])
@@ -70,14 +63,10 @@ def test_extra_cell_error_says_which_mat_has_one() -> None:
 
 
 def test_unknown_cell_error_is_a_key_error_with_a_plain_message() -> None:
-    # str() of a plain KeyError wraps its message in quotes, which a user shouldn't see.
     with pytest.raises(UnknownCellError) as error:
         layout_for(Mat.STANDARD).cell("extra")
     assert isinstance(error.value, KeyError)
     assert str(error.value) == "No cell with key 'extra' in this 24x14 layout."
-
-
-# How the parts of a layout fit together.
 
 
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)

@@ -12,38 +12,42 @@ from typing import Final
 
 MIN_DPI: Final = 150
 MAX_DPI: Final = 600
-MAX_BLEED: Final = 0.5  # inches. The smallest bleed is 0.
-# Text and important art stay this many inches inside the trim, because the printer's cut can wander.
+MAX_BLEED: Final = 0.5
+# Inked Gaming's cut isn't exact, so text and important art stay this far inside the trim.
+# https://www.inkedgaming.com/pages/art-instructions
 SAFE_MARGIN: Final = 0.5
 
 # Inches typed as decimals aren't exact in binary floating point, so 0.29 x 200 comes out as 57.99999999999999.
 # Rounding a product to this many decimal places first lets a whole or half pixel on paper round as one.
 _PIXEL_PRECISION: Final = 9
 
-# The measurements below come from the old GIMP 2 plugin, which worked in pixels at 150 DPI, so each one is written
-# as old pixels / 150. The old canvas had a 1/4" bleed, which put the trim 37 px in from its left and top edges and
-# 38 px in from its right and bottom edges. The old 115 px gap from the canvas edge is therefore 78 px from the
-# left and top of the trim, and 77 px from the right and bottom.
-_MARGIN_LEFT_TOP: Final = 78 / 150
-_MARGIN_RIGHT_BOTTOM: Final = 77 / 150
-_CARD_WIDTH: Final = 2.5  # 375 px
-_CARD_HEIGHT: Final = 3.5  # 525 px
-_LABEL_HEIGHT: Final = 65 / 150
-_ROW_GAP: Final = 85 / 150
-_COLUMN_GAP: Final = 70 / 150
-_LARGE_WIDTH: Final = 2070 / 150  # City and HQ
-_LARGE_HEIGHT: Final = 600 / 150
-_TITLE_HEIGHT: Final = 200 / 150
+_OLD_DPI: Final = 150
+# The old GIMP 2 plugin's canvas had a 37.5 px bleed, which the trim rule splits as 37 px at the left and top and
+# 38 px at the right and bottom. So its gaps from the canvas edge are a pixel smaller from the right and bottom trim.
+_OLD_TRIM_LEFT_TOP: Final = 37
+_OLD_TRIM_RIGHT_BOTTOM: Final = 38
+_OLD_GAP_FROM_CANVAS_EDGE: Final = 115
+_MARGIN_LEFT_TOP: Final = (_OLD_GAP_FROM_CANVAS_EDGE - _OLD_TRIM_LEFT_TOP) / _OLD_DPI
+_MARGIN_RIGHT_BOTTOM: Final = (_OLD_GAP_FROM_CANVAS_EDGE - _OLD_TRIM_RIGHT_BOTTOM) / _OLD_DPI
+_CARD_WIDTH: Final = 2.5
+_CARD_HEIGHT: Final = 3.5
+_LABEL_HEIGHT: Final = 65 / _OLD_DPI
+_ROW_GAP: Final = 85 / _OLD_DPI
+_COLUMN_GAP: Final = 70 / _OLD_DPI
+_CITY_AND_HQ_WIDTH: Final = 2070 / _OLD_DPI
+_CITY_AND_HQ_HEIGHT: Final = 600 / _OLD_DPI
+_TITLE_HEIGHT: Final = 200 / _OLD_DPI
+_LABEL_STRIP_HEIGHT: Final = _CITY_AND_HQ_HEIGHT / 4
 _ROW_TOPS: Final = tuple(_MARGIN_LEFT_TOP + row * (_LABEL_HEIGHT + _CARD_HEIGHT + _ROW_GAP) for row in range(3))
 
-# Sizes in inches that become pixels at the print DPI.
-_LABEL_FONT_SIZE: Final = 54 / 150
-_TITLE_FONT_SIZE: Final = 150 / 150
-_OUTLINE_THICKNESS: Final = 3 / 150
-_LINE_WIDTH: Final = 3 / 150
-_CORNER_RADIUS: Final = 30 / 150
+_LABEL_FONT_SIZE: Final = 54 / _OLD_DPI
+_TITLE_FONT_SIZE: Final = 150 / _OLD_DPI
+_OUTLINE_THICKNESS: Final = 3 / _OLD_DPI
+_LINE_WIDTH: Final = 3 / _OLD_DPI
+_CORNER_RADIUS: Final = 30 / _OLD_DPI
 
 _EXTRA_CELL: Final = "extra"
+_CITY_AND_HQ_SPACE: Final = None
 _LABELS: Final[Mapping[str, str]] = {
     _EXTRA_CELL: "",
     "mastermind": "Mastermind",
@@ -78,12 +82,11 @@ class Mat(Enum):
         return self.value[1]
 
 
-# Each mat's cells by row and column, as they appear on the mat. The City and HQ fill the empty middle.
 _CELL_GRIDS: Final[Mapping[Mat, tuple[tuple[str | None, ...], ...]]] = {
     Mat.STANDARD: (
         ("scheme", "twists", "escaped", "wounds", "bystanders"),
-        ("mastermind", "strikes", None, None, "villain-deck"),
-        ("shield", "sidekicks", None, None, "hero-deck"),
+        ("mastermind", "strikes", _CITY_AND_HQ_SPACE, _CITY_AND_HQ_SPACE, "villain-deck"),
+        ("shield", "sidekicks", _CITY_AND_HQ_SPACE, _CITY_AND_HQ_SPACE, "hero-deck"),
     ),
     Mat.OVERSIZE: (
         (_EXTRA_CELL, "escaped", "wounds", "bystanders"),
@@ -92,8 +95,7 @@ _CELL_GRIDS: Final[Mapping[Mat, tuple[tuple[str | None, ...], ...]]] = {
     ),
 }
 
-# Gap between the second column of cells and the City and HQ.
-_CITY_GAPS: Final[Mapping[Mat, float]] = {Mat.STANDARD: (70 + 15) / 150, Mat.OVERSIZE: 162.5 / 150}
+_GAP_AFTER_SECOND_COLUMN: Final[Mapping[Mat, float]] = {Mat.STANDARD: 85 / _OLD_DPI, Mat.OVERSIZE: 162.5 / _OLD_DPI}
 
 
 @dataclass(frozen=True)
@@ -273,12 +275,12 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         _cell(key, columns[column], _ROW_TOPS[row])
         for row, keys in enumerate(_CELL_GRIDS[mat])
         for column, key in enumerate(keys)
-        if key is not None and (key != _EXTRA_CELL or include_extra_cell)
+        if key is not _CITY_AND_HQ_SPACE and (key != _EXTRA_CELL or include_extra_cell)
     )
-    large_left = columns[1] + _CARD_WIDTH + _CITY_GAPS[mat]
-    hq_top = mat.height - _MARGIN_RIGHT_BOTTOM - _LARGE_HEIGHT
-    city_top = hq_top - _ROW_GAP - _LARGE_HEIGHT
-    return Layout(mat, cells, _city(large_left, city_top), _headquarters(large_left, hq_top))
+    city_and_hq_left = columns[1] + _CARD_WIDTH + _GAP_AFTER_SECOND_COLUMN[mat]
+    hq_top = mat.height - _MARGIN_RIGHT_BOTTOM - _CITY_AND_HQ_HEIGHT
+    city_top = hq_top - _ROW_GAP - _CITY_AND_HQ_HEIGHT
+    return Layout(mat, cells, _city(city_and_hq_left, city_top), _headquarters(city_and_hq_left, hq_top))
 
 
 def canvas_size(mat: Mat, settings: PrintSettings) -> tuple[int, int]:
@@ -370,25 +372,27 @@ def _cell(key: str, left: float, top: float) -> Cell:
 
 
 def _city(left: float, top: float) -> City:
-    district_width = _LARGE_WIDTH / len(_DISTRICT_NAMES)
-    strip = Rect(left, top + _LARGE_HEIGHT * 3 / 4, _LARGE_WIDTH, _LARGE_HEIGHT / 4)
-    # Each district's label box is its fifth of the strip, so text drawn in it stays inside the City. The old plugin's
-    # text frames started a third of the way down the strip and hung below the City.
-    districts = tuple(
-        District(name, Rect(left + number * district_width, strip.top, district_width, strip.height))
-        for number, name in enumerate(_DISTRICT_NAMES)
-    )
+    strip = Rect(left, top + _CITY_AND_HQ_HEIGHT - _LABEL_STRIP_HEIGHT, _CITY_AND_HQ_WIDTH, _LABEL_STRIP_HEIGHT)
+    districts = _split_into_districts(strip)
     return City(
-        outline=Rect(left, top, _LARGE_WIDTH, _LARGE_HEIGHT),
-        title_box=Rect(left, top, _LARGE_WIDTH, _TITLE_HEIGHT),
-        divider_xs=tuple(left + number * district_width for number in range(1, len(_DISTRICT_NAMES))),
+        outline=Rect(left, top, _CITY_AND_HQ_WIDTH, _CITY_AND_HQ_HEIGHT),
+        title_box=Rect(left, top, _CITY_AND_HQ_WIDTH, _TITLE_HEIGHT),
+        divider_xs=tuple(district.label_box.left for district in districts[1:]),
         label_strip=strip,
         districts=districts,
     )
 
 
+def _split_into_districts(label_strip: Rect) -> tuple[District, ...]:
+    width = label_strip.width / len(_DISTRICT_NAMES)
+    return tuple(
+        District(name, Rect(label_strip.left + number * width, label_strip.top, width, label_strip.height))
+        for number, name in enumerate(_DISTRICT_NAMES)
+    )
+
+
 def _headquarters(left: float, top: float) -> Headquarters:
     return Headquarters(
-        outline=Rect(left, top, _LARGE_WIDTH, _LARGE_HEIGHT),
-        title_box=Rect(left, top, _LARGE_WIDTH, _TITLE_HEIGHT),
+        outline=Rect(left, top, _CITY_AND_HQ_WIDTH, _CITY_AND_HQ_HEIGHT),
+        title_box=Rect(left, top, _CITY_AND_HQ_WIDTH, _TITLE_HEIGHT),
     )
