@@ -6,12 +6,13 @@ src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
 """
 
 import pytest
-from layout.model import layout_for
-from print_spec.model import (
+from layout.transforms import find_cell, layout_for
+from print_spec.structs import (
     Mat,
+    MatBox,
     PrintSettings,
-    Rect,
 )
+from print_spec.transforms import to_canvas
 
 CELL_WIDTH = 375
 CELL_HEIGHT = 525
@@ -84,9 +85,9 @@ def old_cell_positions(mat: Mat) -> dict[str, tuple[float, float]]:
     }
 
 
-def assert_matches_old(rect: Rect, x: float, y: float, width: float, height: float) -> None:
-    """At the default settings the rect lands on the old pixel box. Old half-pixel edges may be off by half a pixel."""
-    px = rect.to_pixels(PrintSettings())
+def assert_matches_old(box: MatBox, x: float, y: float, width: float, height: float) -> None:
+    """At the default settings the box lands on the old pixel box. Old half-pixel edges may be off by half a pixel."""
+    px = to_canvas(box, PrintSettings())
     edges = [(px.x, x), (px.y, y), (px.x + px.width, x + width), (px.y + px.height, y + height)]
     for actual, expected in edges:
         assert abs(actual - expected) <= 0.5, f"{px} doesn't match the old box {(x, y, width, height)}"
@@ -119,7 +120,7 @@ def test_standard_mat_has_no_extra_cell() -> None:
 def test_cells_match_the_old_plugin(mat: Mat) -> None:
     layout = layout_for(mat, include_extra_cell=mat is Mat.OVERSIZE)
     for key, (x, y) in old_cell_positions(mat).items():
-        cell = layout.cell(key)
+        cell = find_cell(layout, key)
         assert_matches_old(cell.label_box, x, y, CELL_WIDTH, LABEL_HEIGHT)
         assert_matches_old(cell.card, x, y + LABEL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
 
@@ -139,7 +140,7 @@ def test_cards_are_two_and_a_half_by_three_and_a_half_inches(mat: Mat, extra: bo
 def test_cards_are_within_one_pixel_of_card_size(mat: Mat, extra: bool, dpi: int, bleed: float) -> None:
     settings = PrintSettings(dpi=dpi, bleed=bleed)
     for cell in layout_for(mat, include_extra_cell=extra).cells:
-        card = cell.card.to_pixels(settings)
+        card = to_canvas(cell.card, settings)
         assert abs(card.width - 2.5 * dpi) <= 1 and abs(card.height - 3.5 * dpi) <= 1, (cell.key, card)
 
 
@@ -156,17 +157,17 @@ def test_cells_have_unique_keys_and_correctly_spelled_labels(mat: Mat, extra: bo
 
 def test_a_cell_is_found_by_its_key() -> None:
     layout = layout_for(Mat.OVERSIZE, include_extra_cell=True)
-    assert layout.cell("mastermind").label == "Mastermind"
-    assert layout.cell("shield").label == "S.H.I.E.L.D."
-    assert layout.cell("villain-deck").label == "Villain Deck"
-    assert layout.cell("extra").label == ""
+    assert find_cell(layout, "mastermind").label == "Mastermind"
+    assert find_cell(layout, "shield").label == "S.H.I.E.L.D."
+    assert find_cell(layout, "villain-deck").label == "Villain Deck"
+    assert find_cell(layout, "extra").label == ""
 
 
 def test_an_unknown_cell_key_fails_clearly() -> None:
     with pytest.raises(KeyError, match="no-such-cell"):
-        layout_for(Mat.STANDARD).cell("no-such-cell")
+        find_cell(layout_for(Mat.STANDARD), "no-such-cell")
 
 
 def test_the_extra_cell_is_not_found_when_it_is_left_out() -> None:
     with pytest.raises(KeyError, match="extra"):
-        layout_for(Mat.OVERSIZE).cell("extra")
+        find_cell(layout_for(Mat.OVERSIZE), "extra")
