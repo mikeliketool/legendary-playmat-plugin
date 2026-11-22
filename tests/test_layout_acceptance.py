@@ -1,8 +1,8 @@
 """Acceptance tests for layout.py, confirmed with the user before implementation.
 
-At 150 DPI with a 1/4" bleed, the layout must reproduce the old GIMP 2 plugin exactly. The constants below are that
-plugin's pixel values, copied from src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
-that includes a 1/4" bleed.
+At 150 DPI with a 1/4" bleed, the layout must reproduce the old GIMP 2 plugin exactly, except for the City's district
+label boxes (see test_city_matches_the_old_plugin). The constants below are that plugin's pixel values, copied from
+src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas that includes a 1/4" bleed.
 """
 
 from itertools import combinations
@@ -255,9 +255,11 @@ def test_city_matches_the_old_plugin(mat: Mat) -> None:
     for number, divider_x in enumerate(city.divider_xs, start=1):
         assert abs(position_to_pixels(divider_x, PrintSettings()) - (x + DISTRICT_WIDTH * number)) <= 0.5
     assert tuple(district.name for district in city.districts) == DISTRICTS
+    # The old plugin's district text frames started a third of the way down the strip and hung below the City.
+    # Here each district's label box is its fifth of the label strip, so text drawn in it stays inside the City.
     for number, district in enumerate(city.districts):
         district_x = x + DISTRICT_WIDTH * number
-        assert_matches_old(district.label_box, district_x, strip_y + strip_height / 3, DISTRICT_WIDTH, strip_height)
+        assert_matches_old(district.label_box, district_x, strip_y, DISTRICT_WIDTH, strip_height)
 
 
 # 5. 300 DPI
