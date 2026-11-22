@@ -1,9 +1,17 @@
-"""Tests for layout.py beyond the acceptance tests: floating-point edge cases, error messages, and how parts fit."""
+"""Tests for print_spec.model beyond the acceptance tests: floating-point edge cases and settings errors."""
 
 import math
 
 import pytest
-from layout import Mat, PrintSettings, Style, canvas_size, position_to_pixels, style_for, trim_offset
+from print_spec.model import (
+    Mat,
+    PrintSettings,
+    Style,
+    canvas_size,
+    position_to_pixels,
+    style_for,
+    trim_offset,
+)
 
 # Inches typed as decimals aren't exact in binary floating point, so their products can land just below a whole or
 # half pixel. The rule must still treat them as the whole or half pixel they are on paper.
