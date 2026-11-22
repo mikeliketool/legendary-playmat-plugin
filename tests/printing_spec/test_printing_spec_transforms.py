@@ -1,12 +1,9 @@
-"""Tests for print_spec.model beyond the acceptance tests: floating-point edge cases and settings errors."""
-
-import math
+"""Tests for printing_spec.transforms beyond the acceptance tests: floating-point edge cases and rounding."""
 
 import pytest
-from print_spec.model import (
-    Mat,
-    PrintSettings,
-    Style,
+from printing_spec.consts import Mat
+from printing_spec.structs import PrintSettings, Style
+from printing_spec.transforms import (
     canvas_size,
     position_to_pixels,
     style_for,
@@ -32,21 +29,6 @@ def test_zero_bleed_makes_the_canvas_the_trim_size() -> None:
     settings = PrintSettings(dpi=150, bleed=0.0)
     assert canvas_size(Mat.STANDARD, settings) == (3600, 2100)
     assert trim_offset(settings) == 0
-
-
-# Settings errors say what's allowed.
-
-
-@pytest.mark.parametrize("dpi", [149, 601])
-def test_dpi_error_gives_the_allowed_range(dpi: int) -> None:
-    with pytest.raises(ValueError, match=r"DPI must be between 150 and 600"):
-        PrintSettings(dpi=dpi)
-
-
-@pytest.mark.parametrize("bleed", [-0.01, 0.51, math.nan])
-def test_bleed_error_gives_the_allowed_range(bleed: float) -> None:
-    with pytest.raises(ValueError, match=r"Bleed must be between 0 and 0\.5 inches"):
-        PrintSettings(bleed=bleed)
 
 
 def test_scaled_sizes_round_halves_up() -> None:
