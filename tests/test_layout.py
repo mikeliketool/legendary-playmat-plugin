@@ -3,7 +3,20 @@
 import math
 
 import pytest
-from layout import Mat, PrintSettings, Style, canvas_size, position_to_pixels, style_for, trim_offset
+from layout import (
+    Mat,
+    PrintSettings,
+    Style,
+    UnknownCellError,
+    canvas_size,
+    layout_for,
+    position_to_pixels,
+    style_for,
+    trim_offset,
+)
+
+LAYOUT_CHOICES = [(Mat.STANDARD, False), (Mat.OVERSIZE, False), (Mat.OVERSIZE, True)]
+
 
 # Inches typed as decimals aren't exact in binary floating point, so their products can land just below a whole or
 # half pixel. The rule must still treat them as the whole or half pixel they are on paper.
@@ -39,6 +52,30 @@ def test_dpi_error_gives_the_allowed_range(dpi: int) -> None:
 def test_bleed_error_gives_the_allowed_range(bleed: float) -> None:
     with pytest.raises(ValueError, match=r"Bleed must be between 0 and 0\.5 inches"):
         PrintSettings(bleed=bleed)
+
+
+def test_extra_cell_error_says_which_mat_has_one() -> None:
+    with pytest.raises(ValueError, match="Only the 28x14 mat has an extra cell"):
+        layout_for(Mat.STANDARD, include_extra_cell=True)
+
+
+def test_unknown_cell_error_is_a_key_error_with_a_plain_message() -> None:
+    # str() of a plain KeyError wraps its message in quotes, which a user shouldn't see.
+    with pytest.raises(UnknownCellError) as error:
+        layout_for(Mat.STANDARD).cell("extra")
+    assert isinstance(error.value, KeyError)
+    assert str(error.value) == "No cell with key 'extra' in this 24x14 layout."
+
+
+# How the parts of a layout fit together.
+
+
+@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
+def test_each_card_sits_directly_under_its_label(mat: Mat, extra: bool) -> None:
+    for cell in layout_for(mat, include_extra_cell=extra).cells:
+        assert cell.card.left == cell.label_box.left, cell.key
+        assert cell.card.width == cell.label_box.width, cell.key
+        assert cell.card.top == pytest.approx(cell.label_box.bottom), cell.key
 
 
 def test_scaled_sizes_round_halves_up() -> None:
