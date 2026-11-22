@@ -6,14 +6,14 @@ src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
 """
 
 import pytest
-from print_spec.structs import (
+from printing_spec.consts import Mat
+from printing_spec.structs import (
     CanvasBox,
-    Mat,
     MatBox,
     PrintSettings,
     Style,
 )
-from print_spec.transforms import (
+from printing_spec.transforms import (
     canvas_size,
     position_to_pixels,
     style_for,
