@@ -3,9 +3,29 @@
 import math
 
 import pytest
-from layout import Mat, PrintSettings, Style, canvas_size, layout_for, position_to_pixels, style_for, trim_offset
+from layout import (
+    SAFE_MARGIN,
+    Layout,
+    Mat,
+    PrintSettings,
+    Rect,
+    Style,
+    UnknownCellError,
+    canvas_size,
+    layout_for,
+    position_to_pixels,
+    style_for,
+    trim_offset,
+)
 
 LAYOUT_CHOICES = [(Mat.STANDARD, False), (Mat.OVERSIZE, False), (Mat.OVERSIZE, True)]
+
+
+def all_boxes(layout: Layout) -> list[Rect]:
+    city = layout.city
+    boxes = [box for cell in layout.cells for box in (cell.label_box, cell.card)]
+    boxes += [city.outline, city.title_box, city.label_strip, *(district.label_box for district in city.districts)]
+    return [*boxes, layout.hq.outline, layout.hq.title_box]
 
 
 # Inches typed as decimals aren't exact in binary floating point, so their products can land just below a whole or
@@ -49,9 +69,12 @@ def test_extra_cell_error_says_which_mat_has_one() -> None:
         layout_for(Mat.STANDARD, include_extra_cell=True)
 
 
-def test_unknown_cell_error_names_the_mat() -> None:
-    with pytest.raises(KeyError, match="24x14"):
+def test_unknown_cell_error_is_a_key_error_with_a_plain_message() -> None:
+    # str() of a plain KeyError wraps its message in quotes, which a user shouldn't see.
+    with pytest.raises(UnknownCellError) as error:
         layout_for(Mat.STANDARD).cell("extra")
+    assert isinstance(error.value, KeyError)
+    assert str(error.value) == "No cell with key 'extra' in this 24x14 layout."
 
 
 # How the parts of a layout fit together.
@@ -65,14 +88,23 @@ def test_each_card_sits_directly_under_its_label(mat: Mat, extra: bool) -> None:
         assert cell.card.top == pytest.approx(cell.label_box.bottom), cell.key
 
 
+@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
+def test_everything_stays_inside_the_safe_margin(mat: Mat, extra: bool) -> None:
+    for box in all_boxes(layout_for(mat, include_extra_cell=extra)):
+        assert box.left >= SAFE_MARGIN and box.top >= SAFE_MARGIN, box
+        assert box.right <= mat.width - SAFE_MARGIN and box.bottom <= mat.height - SAFE_MARGIN, box
+
+
 @pytest.mark.parametrize("mat", [Mat.STANDARD, Mat.OVERSIZE])
-def test_city_districts_split_the_city_into_five_equal_spaces(mat: Mat) -> None:
+def test_district_label_boxes_split_the_label_strip_into_fifths(mat: Mat) -> None:
     city = layout_for(mat).city
+    strip = city.label_strip
     boxes = [district.label_box for district in city.districts]
-    assert boxes[0].left == city.outline.left
-    assert boxes[-1].right == pytest.approx(city.outline.right)
+    assert boxes[0].left == strip.left
+    assert boxes[-1].right == pytest.approx(strip.right)
     for box in boxes:
-        assert box.width == pytest.approx(city.outline.width / 5)
+        assert (box.top, box.height) == (strip.top, strip.height)
+        assert box.width == pytest.approx(strip.width / 5)
     for divider_x, box in zip(city.divider_xs, boxes[1:], strict=True):
         assert divider_x == pytest.approx(box.left)
 

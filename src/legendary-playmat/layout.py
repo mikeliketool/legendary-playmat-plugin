@@ -13,6 +13,8 @@ from typing import Final
 MIN_DPI: Final = 150
 MAX_DPI: Final = 600
 MAX_BLEED: Final = 0.5  # inches. The smallest bleed is 0.
+# Text and important art stay this many inches inside the trim, because the printer's cut can wander.
+SAFE_MARGIN: Final = 0.5
 
 # Inches typed as decimals aren't exact in binary floating point, so 0.29 x 200 comes out as 57.99999999999999.
 # Rounding a product to this many decimal places first lets a whole or half pixel on paper round as one.
@@ -146,7 +148,14 @@ class Rect:
         return self.top + self.height
 
     def to_pixels(self, settings: PrintSettings) -> PixelRect:
-        """Convert to pixels: each edge goes through position_to_pixels, and the size comes from those edges."""
+        """Convert to pixels: each edge goes through position_to_pixels, and the size comes from those edges.
+
+        Args:
+            settings: The DPI and bleed of the canvas.
+
+        Returns:
+            The box in canvas pixels, bleed included.
+        """
         x = position_to_pixels(self.left, settings)
         y = position_to_pixels(self.top, settings)
         right = position_to_pixels(self.right, settings)
@@ -194,6 +203,17 @@ class Headquarters:
     title_box: Rect
 
 
+class UnknownCellError(KeyError):
+    """A layout has no cell with the requested key.
+
+    It's a KeyError, so code that expects one still works. Unlike a plain KeyError, its message reads as plain text
+    instead of being wrapped in quotes, so it can be shown to the user as it is.
+    """
+
+    def __str__(self) -> str:
+        return str(self.args[0]) if self.args else ""
+
+
 @dataclass(frozen=True)
 class Layout:
     """Everything drawn on one mat, in inches from the trim."""
@@ -206,13 +226,20 @@ class Layout:
     def cell(self, key: str) -> Cell:
         """Find a cell by its key.
 
+        Args:
+            key: The key saved on the cell's layer group, such as "mastermind".
+
+        Returns:
+            The cell with that key.
+
         Raises:
-            KeyError: If this layout has no cell with that key. The message names the key.
+            UnknownCellError: If this layout has no cell with that key. It's a KeyError, and its message names the
+                key.
         """
         for cell in self.cells:
             if cell.key == key:
                 return cell
-        raise KeyError(f"No cell with key {key!r} in this {_size_name(self.mat)} layout.")
+        raise UnknownCellError(f"No cell with key {key!r} in this {_size_name(self.mat)} layout.")
 
 
 @dataclass(frozen=True)
@@ -233,6 +260,9 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         mat: Which mat size to lay out.
         include_extra_cell: Whether to add the blank cell in the 28x14 mat's top-left corner.
 
+    Returns:
+        Every cell, the City, and the HQ, in inches from the trim.
+
     Raises:
         ValueError: If include_extra_cell is True for a mat that has no extra cell (the 24x14).
     """
@@ -252,24 +282,56 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
 
 
 def canvas_size(mat: Mat, settings: PrintSettings) -> tuple[int, int]:
-    """Canvas (width, height) in pixels, bleed included: round((trim + 2 x bleed) x DPI), halves rounded up."""
+    """Canvas size in pixels, bleed included: round((trim + 2 x bleed) x DPI), halves rounded up.
+
+    Args:
+        mat: The mat size.
+        settings: The DPI and bleed.
+
+    Returns:
+        The canvas (width, height) in pixels.
+    """
     width = _round_half_up((mat.width + 2 * settings.bleed) * settings.dpi)
     height = _round_half_up((mat.height + 2 * settings.bleed) * settings.dpi)
     return width, height
 
 
 def trim_offset(settings: PrintSettings) -> int:
-    """Pixels from the canvas's left or top edge to the trim: floor(bleed x DPI)."""
+    """Pixels from the canvas's left or top edge to the trim: floor(bleed x DPI).
+
+    The right and bottom bleed get what's left of the canvas, so they can be a pixel or two wider.
+
+    Args:
+        settings: The DPI and bleed.
+
+    Returns:
+        The trim's offset in pixels from the canvas's left edge, which is also its offset from the top edge.
+    """
     return math.floor(round(settings.bleed * settings.dpi, _PIXEL_PRECISION))
 
 
 def position_to_pixels(inches: float, settings: PrintSettings) -> int:
-    """Canvas pixel for a position in inches from the trim: trim_offset + round(inches x DPI), halves rounded up."""
+    """Canvas pixel for a position in inches from the trim: trim_offset + round(inches x DPI), halves rounded up.
+
+    Args:
+        inches: A distance from the trim's left edge (for x) or top edge (for y).
+        settings: The DPI and bleed.
+
+    Returns:
+        The pixel's x or y on the canvas.
+    """
     return trim_offset(settings) + _round_half_up(inches * settings.dpi)
 
 
 def style_for(settings: PrintSettings) -> Style:
-    """Font sizes, outline thickness, line width, and corner radius for these settings."""
+    """Font sizes, outline thickness, line width, and corner radius for these settings.
+
+    Args:
+        settings: The DPI and bleed. Only the DPI changes the sizes.
+
+    Returns:
+        The sizes in pixels. At 150 DPI they're the old plugin's sizes.
+    """
     dpi = settings.dpi
     return Style(
         label_font_size=_round_half_up(_LABEL_FONT_SIZE * dpi),
@@ -310,11 +372,10 @@ def _cell(key: str, left: float, top: float) -> Cell:
 def _city(left: float, top: float) -> City:
     district_width = _LARGE_WIDTH / len(_DISTRICT_NAMES)
     strip = Rect(left, top + _LARGE_HEIGHT * 3 / 4, _LARGE_WIDTH, _LARGE_HEIGHT / 4)
-    # As in the old plugin, each district's label box starts a third of the way down the strip and is as tall as the
-    # strip. The box reaches below the City's outline, but the text at the top of the box stays inside the strip.
-    label_top = strip.top + strip.height / 3
+    # Each district's label box is its fifth of the strip, so text drawn in it stays inside the City. The old plugin's
+    # text frames started a third of the way down the strip and hung below the City.
     districts = tuple(
-        District(name, Rect(left + number * district_width, label_top, district_width, strip.height))
+        District(name, Rect(left + number * district_width, strip.top, district_width, strip.height))
         for number, name in enumerate(_DISTRICT_NAMES)
     )
     return City(
