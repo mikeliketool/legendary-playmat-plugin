@@ -10,12 +10,12 @@ from itertools import combinations
 import pytest
 from layout.structs import Layout
 from layout.transforms import find_cell, layout_for
-from print_spec.structs import (
-    Mat,
+from printing_spec.consts import Mat
+from printing_spec.structs import (
     MatBox,
     PrintSettings,
 )
-from print_spec.transforms import (
+from printing_spec.transforms import (
     position_to_pixels,
     to_canvas,
     trim_offset,
