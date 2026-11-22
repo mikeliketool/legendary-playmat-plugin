@@ -5,8 +5,11 @@ label boxes (see test_city_matches_the_old_plugin). The constants below are that
 src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas that includes a 1/4" bleed.
 """
 
+from itertools import combinations
+
 import pytest
 from layout import (
+    Layout,
     Mat,
     PixelRect,
     PrintSettings,
@@ -22,14 +25,20 @@ from layout import (
 CELL_WIDTH = 375
 CELL_HEIGHT = 525
 LABEL_HEIGHT = 65
+LARGE_CELL_WIDTH = 2070
+LARGE_CELL_HEIGHT = 600
+LARGE_LABEL_HEIGHT = 200
 ROW_GAP = 85
 COLUMN_GAP = 70
 OUTSIDE_GAP = 115
+MAIN_SECTION_GAP = 162.5
 FIRST_ROW_Y = OUTSIDE_GAP
 SECOND_ROW_Y = OUTSIDE_GAP + LABEL_HEIGHT + CELL_HEIGHT + ROW_GAP
 THIRD_ROW_Y = SECOND_ROW_Y + LABEL_HEIGHT + CELL_HEIGHT + ROW_GAP
 FIRST_COLUMN_X = OUTSIDE_GAP
 SECOND_COLUMN_X = OUTSIDE_GAP + CELL_WIDTH + COLUMN_GAP
+DISTRICT_WIDTH = LARGE_CELL_WIDTH / 5
+DISTRICTS = ("Bridge", "Streets", "Rooftops", "Bank", "Sewers")
 
 OLD_CANVAS = {Mat.STANDARD: (3675, 2175), Mat.OVERSIZE: (4275, 2175)}
 
@@ -90,12 +99,43 @@ def old_cell_positions(mat: Mat) -> dict[str, tuple[float, float]]:
     }
 
 
+def old_large_cell_x(mat: Mat) -> float:
+    """Left edge of the City and HQ in the old plugin."""
+    if mat is Mat.OVERSIZE:
+        return OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
+    return OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP * 2 + 15
+
+
+def old_hq_y(mat: Mat) -> int:
+    """Top edge of the HQ in the old plugin."""
+    return OLD_CANVAS[mat][1] - OUTSIDE_GAP - LARGE_CELL_HEIGHT
+
+
 def assert_matches_old(rect: Rect, x: float, y: float, width: float, height: float) -> None:
     """At the default settings the rect lands on the old pixel box. Old half-pixel edges may be off by half a pixel."""
     px = rect.to_pixels(PrintSettings())
     edges = [(px.x, x), (px.y, y), (px.x + px.width, x + width), (px.y + px.height, y + height)]
     for actual, expected in edges:
         assert abs(actual - expected) <= 0.5, f"{px} doesn't match the old box {(x, y, width, height)}"
+
+
+def element_parts(layout: Layout) -> list[list[Rect]]:
+    """Every drawn element (each cell, the City, the HQ) as the list of boxes it's made of."""
+    city = layout.city
+    elements = [[cell.label_box, cell.card] for cell in layout.cells]
+    elements.append([city.outline, city.title_box, city.label_strip, *(d.label_box for d in city.districts)])
+    elements.append([layout.hq.outline, layout.hq.title_box])
+    return elements
+
+
+def bounds(rects: list[Rect]) -> Rect:
+    left = min(r.left for r in rects)
+    top = min(r.top for r in rects)
+    return Rect(left, top, max(r.right for r in rects) - left, max(r.bottom for r in rects) - top)
+
+
+def overlaps(a: Rect, b: Rect) -> bool:
+    return a.left < b.right and b.left < a.right and a.top < b.bottom and b.top < a.bottom
 
 
 # 1. Mat sizes
@@ -194,6 +234,34 @@ def test_cells_match_the_old_plugin(mat: Mat) -> None:
         assert_matches_old(cell.card, x, y + LABEL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
 
 
+@pytest.mark.parametrize("mat", MATS)
+def test_hq_matches_the_old_plugin(mat: Mat) -> None:
+    hq = layout_for(mat).hq
+    x, y = old_large_cell_x(mat), old_hq_y(mat)
+    assert_matches_old(hq.outline, x, y, LARGE_CELL_WIDTH, LARGE_CELL_HEIGHT)
+    assert_matches_old(hq.title_box, x, y, LARGE_CELL_WIDTH, LARGE_LABEL_HEIGHT)
+
+
+@pytest.mark.parametrize("mat", MATS)
+def test_city_matches_the_old_plugin(mat: Mat) -> None:
+    city = layout_for(mat).city
+    x, y = old_large_cell_x(mat), old_hq_y(mat) - ROW_GAP - LARGE_CELL_HEIGHT
+    strip_y = y + LARGE_CELL_HEIGHT * 0.75
+    strip_height = LARGE_CELL_HEIGHT / 4
+    assert_matches_old(city.outline, x, y, LARGE_CELL_WIDTH, LARGE_CELL_HEIGHT)
+    assert_matches_old(city.title_box, x, y, LARGE_CELL_WIDTH, LARGE_LABEL_HEIGHT)
+    assert_matches_old(city.label_strip, x, strip_y, LARGE_CELL_WIDTH, strip_height)
+    assert len(city.divider_xs) == 4
+    for number, divider_x in enumerate(city.divider_xs, start=1):
+        assert abs(position_to_pixels(divider_x, PrintSettings()) - (x + DISTRICT_WIDTH * number)) <= 0.5
+    assert tuple(district.name for district in city.districts) == DISTRICTS
+    # The old plugin's district text frames started a third of the way down the strip and hung below the City.
+    # Here each district's label box is its fifth of the label strip, so text drawn in it stays inside the City.
+    for number, district in enumerate(city.districts):
+        district_x = x + DISTRICT_WIDTH * number
+        assert_matches_old(district.label_box, district_x, strip_y, DISTRICT_WIDTH, strip_height)
+
+
 # 5. 300 DPI
 
 
@@ -203,6 +271,21 @@ def test_canvas_at_300_dpi(mat: Mat, expected: tuple[int, int]) -> None:
 
 
 # 6. Any setting
+
+
+@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
+def test_no_two_elements_overlap(mat: Mat, extra: bool) -> None:
+    element_bounds = [bounds(parts) for parts in element_parts(layout_for(mat, include_extra_cell=extra))]
+    for a, b in combinations(element_bounds, 2):
+        assert not overlaps(a, b), f"{a} overlaps {b}"
+
+
+@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
+def test_everything_is_inside_the_safe_area(mat: Mat, extra: bool) -> None:
+    for parts in element_parts(layout_for(mat, include_extra_cell=extra)):
+        for rect in parts:
+            assert rect.left >= 0.5 and rect.top >= 0.5, rect
+            assert rect.right <= mat.width - 0.5 and rect.bottom <= mat.height - 0.5, rect
 
 
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
@@ -219,6 +302,22 @@ def test_cards_are_within_one_pixel_of_card_size(mat: Mat, extra: bool, dpi: int
     for cell in layout_for(mat, include_extra_cell=extra).cells:
         card = cell.card.to_pixels(settings)
         assert abs(card.width - 2.5 * dpi) <= 1 and abs(card.height - 3.5 * dpi) <= 1, (cell.key, card)
+
+
+@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
+@pytest.mark.parametrize("dpi", DPIS)
+def test_positions_from_the_trim_do_not_depend_on_the_bleed(mat: Mat, extra: bool, dpi: int) -> None:
+    rects = [rect for parts in element_parts(layout_for(mat, include_extra_cell=extra)) for rect in parts]
+
+    def from_trim(bleed: float) -> list[tuple[int, int, int, int]]:
+        settings = PrintSettings(dpi=dpi, bleed=bleed)
+        offset = trim_offset(settings)
+        boxes = [rect.to_pixels(settings) for rect in rects]
+        return [(px.x - offset, px.y - offset, px.width, px.height) for px in boxes]
+
+    first, *others = [from_trim(bleed) for bleed in BLEEDS]
+    for other in others:
+        assert other == first
 
 
 # 7. Fixed labels and 8. Cell lookup

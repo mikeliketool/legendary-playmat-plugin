@@ -4,8 +4,11 @@ import math
 
 import pytest
 from layout import (
+    SAFE_MARGIN,
+    Layout,
     Mat,
     PrintSettings,
+    Rect,
     Style,
     UnknownCellError,
     canvas_size,
@@ -16,6 +19,13 @@ from layout import (
 )
 
 LAYOUT_CHOICES = [(Mat.STANDARD, False), (Mat.OVERSIZE, False), (Mat.OVERSIZE, True)]
+
+
+def all_boxes(layout: Layout) -> list[Rect]:
+    city = layout.city
+    boxes = [box for cell in layout.cells for box in (cell.label_box, cell.card)]
+    boxes += [city.outline, city.title_box, city.label_strip, *(district.label_box for district in city.districts)]
+    return [*boxes, layout.hq.outline, layout.hq.title_box]
 
 
 # Inches typed as decimals aren't exact in binary floating point, so their products can land just below a whole or
@@ -76,6 +86,35 @@ def test_each_card_sits_directly_under_its_label(mat: Mat, extra: bool) -> None:
         assert cell.card.left == cell.label_box.left, cell.key
         assert cell.card.width == cell.label_box.width, cell.key
         assert cell.card.top == pytest.approx(cell.label_box.bottom), cell.key
+
+
+@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
+def test_everything_stays_inside_the_safe_margin(mat: Mat, extra: bool) -> None:
+    for box in all_boxes(layout_for(mat, include_extra_cell=extra)):
+        assert box.left >= SAFE_MARGIN and box.top >= SAFE_MARGIN, box
+        assert box.right <= mat.width - SAFE_MARGIN and box.bottom <= mat.height - SAFE_MARGIN, box
+
+
+@pytest.mark.parametrize("mat", [Mat.STANDARD, Mat.OVERSIZE])
+def test_district_label_boxes_split_the_label_strip_into_fifths(mat: Mat) -> None:
+    city = layout_for(mat).city
+    strip = city.label_strip
+    boxes = [district.label_box for district in city.districts]
+    assert boxes[0].left == strip.left
+    assert boxes[-1].right == pytest.approx(strip.right)
+    for box in boxes:
+        assert (box.top, box.height) == (strip.top, strip.height)
+        assert box.width == pytest.approx(strip.width / 5)
+    for divider_x, box in zip(city.divider_xs, boxes[1:], strict=True):
+        assert divider_x == pytest.approx(box.left)
+
+
+@pytest.mark.parametrize("mat", [Mat.STANDARD, Mat.OVERSIZE])
+def test_city_sits_above_the_hq_with_the_same_width(mat: Mat) -> None:
+    layout = layout_for(mat)
+    assert layout.city.outline.left == layout.hq.outline.left
+    assert layout.city.outline.width == layout.hq.outline.width
+    assert layout.city.outline.bottom < layout.hq.outline.top
 
 
 def test_scaled_sizes_round_halves_up() -> None:

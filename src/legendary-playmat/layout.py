@@ -13,6 +13,8 @@ from typing import Final
 MIN_DPI: Final = 150
 MAX_DPI: Final = 600
 MAX_BLEED: Final = 0.5  # inches. The smallest bleed is 0.
+# Text and important art stay this many inches inside the trim, because the printer's cut can wander.
+SAFE_MARGIN: Final = 0.5
 
 # Inches typed as decimals aren't exact in binary floating point, so 0.29 x 200 comes out as 57.99999999999999.
 # Rounding a product to this many decimal places first lets a whole or half pixel on paper round as one.
@@ -29,6 +31,9 @@ _CARD_HEIGHT: Final = 3.5  # 525 px
 _LABEL_HEIGHT: Final = 65 / 150
 _ROW_GAP: Final = 85 / 150
 _COLUMN_GAP: Final = 70 / 150
+_LARGE_WIDTH: Final = 2070 / 150  # City and HQ
+_LARGE_HEIGHT: Final = 600 / 150
+_TITLE_HEIGHT: Final = 200 / 150
 _ROW_TOPS: Final = tuple(_MARGIN_LEFT_TOP + row * (_LABEL_HEIGHT + _CARD_HEIGHT + _ROW_GAP) for row in range(3))
 
 # Sizes in inches that become pixels at the print DPI.
@@ -53,6 +58,7 @@ _LABELS: Final[Mapping[str, str]] = {
     "villain-deck": "Villain Deck",
     "hero-deck": "Hero Deck",
 }
+_DISTRICT_NAMES: Final = ("Bridge", "Streets", "Rooftops", "Bank", "Sewers")
 
 
 class Mat(Enum):
@@ -85,6 +91,9 @@ _CELL_GRIDS: Final[Mapping[Mat, tuple[tuple[str | None, ...], ...]]] = {
         ("scheme", "twists", "hero-deck", "sidekicks"),
     ),
 }
+
+# Gap between the second column of cells and the City and HQ.
+_CITY_GAPS: Final[Mapping[Mat, float]] = {Mat.STANDARD: (70 + 15) / 150, Mat.OVERSIZE: 162.5 / 150}
 
 
 @dataclass(frozen=True)
@@ -167,6 +176,33 @@ class Cell:
     card: Rect
 
 
+@dataclass(frozen=True)
+class District:
+    """One of the City's five spaces, with its name label."""
+
+    name: str
+    label_box: Rect
+
+
+@dataclass(frozen=True)
+class City:
+    """The City: an outline with a title, four vertical dividers, and a strip of district labels."""
+
+    outline: Rect
+    title_box: Rect
+    divider_xs: tuple[float, ...]
+    label_strip: Rect
+    districts: tuple[District, ...]
+
+
+@dataclass(frozen=True)
+class Headquarters:
+    """The HQ row: an outline with a title."""
+
+    outline: Rect
+    title_box: Rect
+
+
 class UnknownCellError(KeyError):
     """A layout has no cell with the requested key.
 
@@ -184,6 +220,8 @@ class Layout:
 
     mat: Mat
     cells: tuple[Cell, ...]
+    city: City
+    hq: Headquarters
 
     def cell(self, key: str) -> Cell:
         """Find a cell by its key.
@@ -223,7 +261,7 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         include_extra_cell: Whether to add the blank cell in the 28x14 mat's top-left corner.
 
     Returns:
-        Every cell, in inches from the trim.
+        Every cell, the City, and the HQ, in inches from the trim.
 
     Raises:
         ValueError: If include_extra_cell is True for a mat that has no extra cell (the 24x14).
@@ -237,7 +275,10 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         for column, key in enumerate(keys)
         if key is not None and (key != _EXTRA_CELL or include_extra_cell)
     )
-    return Layout(mat, cells)
+    large_left = columns[1] + _CARD_WIDTH + _CITY_GAPS[mat]
+    hq_top = mat.height - _MARGIN_RIGHT_BOTTOM - _LARGE_HEIGHT
+    city_top = hq_top - _ROW_GAP - _LARGE_HEIGHT
+    return Layout(mat, cells, _city(large_left, city_top), _headquarters(large_left, hq_top))
 
 
 def canvas_size(mat: Mat, settings: PrintSettings) -> tuple[int, int]:
@@ -326,3 +367,28 @@ def _cell(key: str, left: float, top: float) -> Cell:
     label_box = Rect(left, top, _CARD_WIDTH, _LABEL_HEIGHT)
     card = Rect(left, label_box.bottom, _CARD_WIDTH, _CARD_HEIGHT)
     return Cell(key, _LABELS[key], label_box, card)
+
+
+def _city(left: float, top: float) -> City:
+    district_width = _LARGE_WIDTH / len(_DISTRICT_NAMES)
+    strip = Rect(left, top + _LARGE_HEIGHT * 3 / 4, _LARGE_WIDTH, _LARGE_HEIGHT / 4)
+    # Each district's label box is its fifth of the strip, so text drawn in it stays inside the City. The old plugin's
+    # text frames started a third of the way down the strip and hung below the City.
+    districts = tuple(
+        District(name, Rect(left + number * district_width, strip.top, district_width, strip.height))
+        for number, name in enumerate(_DISTRICT_NAMES)
+    )
+    return City(
+        outline=Rect(left, top, _LARGE_WIDTH, _LARGE_HEIGHT),
+        title_box=Rect(left, top, _LARGE_WIDTH, _TITLE_HEIGHT),
+        divider_xs=tuple(left + number * district_width for number in range(1, len(_DISTRICT_NAMES))),
+        label_strip=strip,
+        districts=districts,
+    )
+
+
+def _headquarters(left: float, top: float) -> Headquarters:
+    return Headquarters(
+        outline=Rect(left, top, _LARGE_WIDTH, _LARGE_HEIGHT),
+        title_box=Rect(left, top, _LARGE_WIDTH, _TITLE_HEIGHT),
+    )
