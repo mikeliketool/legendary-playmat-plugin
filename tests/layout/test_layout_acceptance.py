@@ -8,12 +8,16 @@ src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
 from itertools import combinations
 
 import pytest
-from layout.model import Layout, layout_for
-from print_spec.model import (
+from layout.structs import Layout
+from layout.transforms import find_cell, layout_for
+from print_spec.structs import (
     Mat,
+    MatBox,
     PrintSettings,
-    Rect,
+)
+from print_spec.transforms import (
     position_to_pixels,
+    to_canvas,
     trim_offset,
 )
 
@@ -106,15 +110,15 @@ def old_hq_y(mat: Mat) -> int:
     return OLD_CANVAS[mat][1] - OUTSIDE_GAP - LARGE_CELL_HEIGHT
 
 
-def assert_matches_old(rect: Rect, x: float, y: float, width: float, height: float) -> None:
-    """At the default settings the rect lands on the old pixel box. Old half-pixel edges may be off by half a pixel."""
-    px = rect.to_pixels(PrintSettings())
+def assert_matches_old(box: MatBox, x: float, y: float, width: float, height: float) -> None:
+    """At the default settings the box lands on the old pixel box. Old half-pixel edges may be off by half a pixel."""
+    px = to_canvas(box, PrintSettings())
     edges = [(px.x, x), (px.y, y), (px.x + px.width, x + width), (px.y + px.height, y + height)]
     for actual, expected in edges:
         assert abs(actual - expected) <= 0.5, f"{px} doesn't match the old box {(x, y, width, height)}"
 
 
-def element_parts(layout: Layout) -> list[list[Rect]]:
+def element_parts(layout: Layout) -> list[list[MatBox]]:
     """Every drawn element (each cell, the City, the HQ) as the list of boxes it's made of."""
     city = layout.city
     elements = [[cell.label_box, cell.card] for cell in layout.cells]
@@ -123,13 +127,13 @@ def element_parts(layout: Layout) -> list[list[Rect]]:
     return elements
 
 
-def bounds(rects: list[Rect]) -> Rect:
-    left = min(r.left for r in rects)
-    top = min(r.top for r in rects)
-    return Rect(left, top, max(r.right for r in rects) - left, max(r.bottom for r in rects) - top)
+def bounds(boxes: list[MatBox]) -> MatBox:
+    left = min(b.left for b in boxes)
+    top = min(b.top for b in boxes)
+    return MatBox(left, top, max(b.right for b in boxes) - left, max(b.bottom for b in boxes) - top)
 
 
-def overlaps(a: Rect, b: Rect) -> bool:
+def overlaps(a: MatBox, b: MatBox) -> bool:
     return a.left < b.right and b.left < a.right and a.top < b.bottom and b.top < a.bottom
 
 
@@ -160,7 +164,7 @@ def test_standard_mat_has_no_extra_cell() -> None:
 def test_cells_match_the_old_plugin(mat: Mat) -> None:
     layout = layout_for(mat, include_extra_cell=mat is Mat.OVERSIZE)
     for key, (x, y) in old_cell_positions(mat).items():
-        cell = layout.cell(key)
+        cell = find_cell(layout, key)
         assert_matches_old(cell.label_box, x, y, CELL_WIDTH, LABEL_HEIGHT)
         assert_matches_old(cell.card, x, y + LABEL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
 
@@ -206,9 +210,9 @@ def test_no_two_elements_overlap(mat: Mat, extra: bool) -> None:
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
 def test_everything_is_inside_the_safe_area(mat: Mat, extra: bool) -> None:
     for parts in element_parts(layout_for(mat, include_extra_cell=extra)):
-        for rect in parts:
-            assert rect.left >= 0.5 and rect.top >= 0.5, rect
-            assert rect.right <= mat.width - 0.5 and rect.bottom <= mat.height - 0.5, rect
+        for box in parts:
+            assert box.left >= 0.5 and box.top >= 0.5, box
+            assert box.right <= mat.width - 0.5 and box.bottom <= mat.height - 0.5, box
 
 
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
@@ -223,20 +227,20 @@ def test_cards_are_two_and_a_half_by_three_and_a_half_inches(mat: Mat, extra: bo
 def test_cards_are_within_one_pixel_of_card_size(mat: Mat, extra: bool, dpi: int, bleed: float) -> None:
     settings = PrintSettings(dpi=dpi, bleed=bleed)
     for cell in layout_for(mat, include_extra_cell=extra).cells:
-        card = cell.card.to_pixels(settings)
+        card = to_canvas(cell.card, settings)
         assert abs(card.width - 2.5 * dpi) <= 1 and abs(card.height - 3.5 * dpi) <= 1, (cell.key, card)
 
 
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
 @pytest.mark.parametrize("dpi", DPIS)
 def test_positions_from_the_trim_do_not_depend_on_the_bleed(mat: Mat, extra: bool, dpi: int) -> None:
-    rects = [rect for parts in element_parts(layout_for(mat, include_extra_cell=extra)) for rect in parts]
+    boxes = [box for parts in element_parts(layout_for(mat, include_extra_cell=extra)) for box in parts]
 
     def from_trim(bleed: float) -> list[tuple[int, int, int, int]]:
         settings = PrintSettings(dpi=dpi, bleed=bleed)
         offset = trim_offset(settings)
-        boxes = [rect.to_pixels(settings) for rect in rects]
-        return [(px.x - offset, px.y - offset, px.width, px.height) for px in boxes]
+        canvas_boxes = [to_canvas(box, settings) for box in boxes]
+        return [(px.x - offset, px.y - offset, px.width, px.height) for px in canvas_boxes]
 
     first, *others = [from_trim(bleed) for bleed in BLEEDS]
     for other in others:
@@ -256,17 +260,17 @@ def test_cells_have_unique_keys_and_correctly_spelled_labels(mat: Mat, extra: bo
 
 def test_a_cell_is_found_by_its_key() -> None:
     layout = layout_for(Mat.OVERSIZE, include_extra_cell=True)
-    assert layout.cell("mastermind").label == "Mastermind"
-    assert layout.cell("shield").label == "S.H.I.E.L.D."
-    assert layout.cell("villain-deck").label == "Villain Deck"
-    assert layout.cell("extra").label == ""
+    assert find_cell(layout, "mastermind").label == "Mastermind"
+    assert find_cell(layout, "shield").label == "S.H.I.E.L.D."
+    assert find_cell(layout, "villain-deck").label == "Villain Deck"
+    assert find_cell(layout, "extra").label == ""
 
 
 def test_an_unknown_cell_key_fails_clearly() -> None:
     with pytest.raises(KeyError, match="no-such-cell"):
-        layout_for(Mat.STANDARD).cell("no-such-cell")
+        find_cell(layout_for(Mat.STANDARD), "no-such-cell")
 
 
 def test_the_extra_cell_is_not_found_when_it_is_left_out() -> None:
     with pytest.raises(KeyError, match="extra"):
-        layout_for(Mat.OVERSIZE).cell("extra")
+        find_cell(layout_for(Mat.OVERSIZE), "extra")
