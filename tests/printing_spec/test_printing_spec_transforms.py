@@ -1,8 +1,9 @@
-"""Tests for print_spec.transforms beyond the acceptance tests: floating-point edge cases and rounding."""
+"""Tests for printing_spec.transforms beyond the acceptance tests: floating-point edge cases and rounding."""
 
 import pytest
-from print_spec.structs import Mat, PrintSettings, Style
-from print_spec.transforms import (
+from printing_spec.consts import Mat
+from printing_spec.structs import PrintSettings, Style
+from printing_spec.transforms import (
     canvas_size,
     position_to_pixels,
     style_for,

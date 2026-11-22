@@ -1,24 +1,21 @@
-"""Print spec rules for a Marvel Legendary playmat: the inches-to-pixels rule and the sizes that scale with DPI.
+"""Printing spec rules for a Marvel Legendary playmat: the inches-to-pixels rule and the sizes that scale with DPI.
 
 Pure Python with no GIMP code, so it can be tested on its own. Positions are in inches from the top-left corner of
 the trim (the finished mat's edge), and only become pixels at drawing time.
 """
 
 import math
-from typing import Final
 
-from print_spec.structs import CanvasBox, Mat, MatBox, PrintSettings, Style
-
-# Inches typed as decimals aren't exact in binary floating point, so 0.29 x 200 comes out as 57.99999999999999.
-# Rounding a product to this many decimal places first lets a whole or half pixel on paper round as one.
-_PIXEL_PRECISION: Final = 9
-
-# Sizes in inches that become pixels at the print DPI.
-_LABEL_FONT_SIZE: Final = 54 / 150
-_TITLE_FONT_SIZE: Final = 150 / 150
-_OUTLINE_THICKNESS: Final = 3 / 150
-_LINE_WIDTH: Final = 3 / 150
-_CORNER_RADIUS: Final = 30 / 150
+from printing_spec.consts import (
+    CORNER_RADIUS,
+    LABEL_FONT_SIZE,
+    LINE_WIDTH,
+    OUTLINE_THICKNESS,
+    PIXEL_PRECISION,
+    TITLE_FONT_SIZE,
+    Mat,
+)
+from printing_spec.structs import CanvasBox, MatBox, PrintSettings, Style
 
 
 def canvas_size(mat: Mat, settings: PrintSettings) -> tuple[int, int]:
@@ -47,7 +44,7 @@ def trim_offset(settings: PrintSettings) -> int:
     Returns:
         The trim's offset in pixels from the canvas's left edge, which is also its offset from the top edge.
     """
-    return math.floor(round(settings.bleed * settings.dpi, _PIXEL_PRECISION))
+    return math.floor(round(settings.bleed * settings.dpi, PIXEL_PRECISION))
 
 
 def position_to_pixels(inches: float, settings: PrintSettings) -> int:
@@ -91,14 +88,14 @@ def style_for(settings: PrintSettings) -> Style:
     """
     dpi = settings.dpi
     return Style(
-        label_font_size=_round_half_up(_LABEL_FONT_SIZE * dpi),
-        title_font_size=_round_half_up(_TITLE_FONT_SIZE * dpi),
-        outline_thickness=_round_half_up(_OUTLINE_THICKNESS * dpi),
-        line_width=_round_half_up(_LINE_WIDTH * dpi),
-        corner_radius=_round_half_up(_CORNER_RADIUS * dpi),
+        label_font_size=_round_half_up(LABEL_FONT_SIZE * dpi),
+        title_font_size=_round_half_up(TITLE_FONT_SIZE * dpi),
+        outline_thickness=_round_half_up(OUTLINE_THICKNESS * dpi),
+        line_width=_round_half_up(LINE_WIDTH * dpi),
+        corner_radius=_round_half_up(CORNER_RADIUS * dpi),
     )
 
 
 def _round_half_up(pixels: float) -> int:
     # Python's round() sends halves to the nearest even number, so 752.5 would become 752.
-    return math.floor(round(pixels, _PIXEL_PRECISION) + 0.5)
+    return math.floor(round(pixels, PIXEL_PRECISION) + 0.5)

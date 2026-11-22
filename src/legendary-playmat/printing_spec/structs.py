@@ -1,33 +1,12 @@
-"""Print spec data types for a Marvel Legendary playmat: mat sizes, print settings, boxes, and scaled sizes.
+"""Printing spec data types for a Marvel Legendary playmat: print settings, boxes, and scaled sizes.
 
 Pure Python with no GIMP code, so it can be tested on its own. Positions are in inches from the top-left corner of
-the trim (the finished mat's edge), and only become pixels at drawing time (see print_spec.transforms).
+the trim (the finished mat's edge), and only become pixels at drawing time (see printing_spec.transforms).
 """
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Final
 
-MIN_DPI: Final = 150
-MAX_DPI: Final = 600
-MAX_BLEED: Final = 0.5  # inches. The smallest bleed is 0.
-
-
-class Mat(Enum):
-    """The two mat sizes Inked Gaming prints, as (width, height) of the trim in inches."""
-
-    STANDARD = (24.0, 14.0)
-    OVERSIZE = (28.0, 14.0)
-
-    @property
-    def width(self) -> float:
-        """Trim width in inches."""
-        return self.value[0]
-
-    @property
-    def height(self) -> float:
-        """Trim height in inches."""
-        return self.value[1]
+from printing_spec.consts import MAX_BLEED, MAX_DPI, MIN_DPI
 
 
 @dataclass(frozen=True)

@@ -1,9 +1,9 @@
-"""Tests for print_spec.structs beyond the acceptance tests: settings errors say what's allowed."""
+"""Tests for printing_spec.structs beyond the acceptance tests: settings errors say what's allowed."""
 
 import math
 
 import pytest
-from print_spec.structs import PrintSettings
+from printing_spec.structs import PrintSettings
 
 
 @pytest.mark.parametrize("dpi", [149, 601])
