@@ -6,7 +6,7 @@ src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
 """
 
 import pytest
-from layout import (
+from print_spec.model import (
     Mat,
     PixelRect,
     PrintSettings,

@@ -1,7 +1,7 @@
-"""Layout of a Marvel Legendary playmat: mat sizes, element positions, and the inches-to-pixels rule.
+"""Print spec for a Marvel Legendary playmat: mat sizes, print settings, and the inches-to-pixels rule.
 
-Pure Python with no GIMP code, so the layout can be tested on its own. Positions are in inches from the
-top-left corner of the trim (the finished mat's edge), and only become pixels at drawing time.
+Pure Python with no GIMP code, so it can be tested on its own. Positions are in inches from the top-left corner of
+the trim (the finished mat's edge), and only become pixels at drawing time.
 """
 
 import math

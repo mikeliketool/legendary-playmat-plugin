@@ -1,9 +1,9 @@
-"""Tests for layout.py beyond the acceptance tests: floating-point edge cases, error messages, and how parts fit."""
+"""Tests for print_spec.model beyond the acceptance tests: floating-point edge cases and settings errors."""
 
 import math
 
 import pytest
-from layout import (
+from print_spec.model import (
     Mat,
     PrintSettings,
     Style,
