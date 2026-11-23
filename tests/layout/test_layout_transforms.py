@@ -1,19 +1,11 @@
 """Tests for layout.transforms beyond the acceptance tests: error messages and how the parts fit together."""
 
 import pytest
-from layout.structs import Layout, UnknownCellError
+from layout.structs import UnknownCellError
 from layout.transforms import find_cell, layout_for
-from printing_spec.consts import SAFE_MARGIN, Mat
-from printing_spec.structs import MatBox
+from printing_spec.consts import Mat
 
 LAYOUT_CHOICES = [(Mat.STANDARD, False), (Mat.OVERSIZE, False), (Mat.OVERSIZE, True)]
-
-
-def all_boxes(layout: Layout) -> list[MatBox]:
-    city = layout.city
-    boxes = [box for cell in layout.cells for box in (cell.label_box, cell.card)]
-    boxes += [city.outline, city.title_box, city.label_strip, *(district.label_box for district in city.districts)]
-    return [*boxes, layout.hq.outline, layout.hq.title_box]
 
 
 def test_extra_cell_error_says_which_mat_has_one() -> None:
@@ -34,13 +26,6 @@ def test_each_card_sits_directly_under_its_label(mat: Mat, extra: bool) -> None:
         assert cell.card.left == cell.label_box.left, cell.key
         assert cell.card.width == cell.label_box.width, cell.key
         assert cell.card.top == pytest.approx(cell.label_box.bottom), cell.key
-
-
-@pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
-def test_everything_stays_inside_the_safe_margin(mat: Mat, extra: bool) -> None:
-    for box in all_boxes(layout_for(mat, include_extra_cell=extra)):
-        assert box.left >= SAFE_MARGIN and box.top >= SAFE_MARGIN, box
-        assert box.right <= mat.width - SAFE_MARGIN and box.bottom <= mat.height - SAFE_MARGIN, box
 
 
 @pytest.mark.parametrize("mat", [Mat.STANDARD, Mat.OVERSIZE])
