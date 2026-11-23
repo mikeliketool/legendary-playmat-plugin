@@ -1,21 +1,15 @@
-"""Tests for layout.model beyond the acceptance tests: error messages and how the parts fit together."""
+"""Tests for layout.transforms beyond the acceptance tests: error messages and how the parts fit together."""
 
 import pytest
-from layout.model import (
-    Layout,
-    UnknownCellError,
-    layout_for,
-)
-from print_spec.model import (
-    SAFE_MARGIN,
-    Mat,
-    Rect,
-)
+from layout.structs import Layout, UnknownCellError
+from layout.transforms import find_cell, layout_for
+from printing_spec.consts import SAFE_MARGIN, Mat
+from printing_spec.structs import MatBox
 
 LAYOUT_CHOICES = [(Mat.STANDARD, False), (Mat.OVERSIZE, False), (Mat.OVERSIZE, True)]
 
 
-def all_boxes(layout: Layout) -> list[Rect]:
+def all_boxes(layout: Layout) -> list[MatBox]:
     city = layout.city
     boxes = [box for cell in layout.cells for box in (cell.label_box, cell.card)]
     boxes += [city.outline, city.title_box, city.label_strip, *(district.label_box for district in city.districts)]
@@ -30,7 +24,7 @@ def test_extra_cell_error_says_which_mat_has_one() -> None:
 def test_unknown_cell_error_is_a_key_error_with_a_plain_message() -> None:
     # str() of a plain KeyError wraps its message in quotes, which a user shouldn't see.
     with pytest.raises(UnknownCellError) as error:
-        layout_for(Mat.STANDARD).cell("extra")
+        find_cell(layout_for(Mat.STANDARD), "extra")
     assert isinstance(error.value, KeyError)
     assert str(error.value) == "No cell with key 'extra' in this 24x14 layout."
 

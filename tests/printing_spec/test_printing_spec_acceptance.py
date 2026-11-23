@@ -6,15 +6,18 @@ src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas
 """
 
 import pytest
-from print_spec.model import (
-    Mat,
-    PixelRect,
+from printing_spec.consts import Mat
+from printing_spec.structs import (
+    CanvasBox,
+    MatBox,
     PrintSettings,
-    Rect,
     Style,
+)
+from printing_spec.transforms import (
     canvas_size,
     position_to_pixels,
     style_for,
+    to_canvas,
     trim_offset,
 )
 
@@ -72,8 +75,8 @@ def test_positions_are_measured_from_the_trim_and_round_halves_up() -> None:
 
 def test_box_size_comes_from_its_rounded_edges() -> None:
     # Edges: 75 + 151 = 226 and 75 + 903 = 978, so the width is 752, not round(2.5 x 301 = 752.5).
-    rect = Rect(left=0.5, top=0.5, width=2.5, height=3.5)
-    assert rect.to_pixels(PrintSettings(dpi=301, bleed=0.25)) == PixelRect(x=226, y=226, width=752, height=1053)
+    box = MatBox(left=0.5, top=0.5, width=2.5, height=3.5)
+    assert to_canvas(box, PrintSettings(dpi=301, bleed=0.25)) == CanvasBox(x=226, y=226, width=752, height=1053)
 
 
 # 4. Matches the old mats (150 DPI, 1/4" bleed)
