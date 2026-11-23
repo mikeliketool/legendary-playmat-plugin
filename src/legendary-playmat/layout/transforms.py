@@ -3,6 +3,8 @@
 Pure Python with no GIMP code, so the layout can be tested on its own. Everything is in inches from the trim.
 """
 
+from typing import TypeGuard
+
 from printing_spec.consts import Mat
 from printing_spec.structs import MatBox
 
@@ -56,7 +58,7 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         _cell_at(key, columns[column], ROW_TOPS[row])
         for row, keys in enumerate(mat_layout.cell_grid)
         for column, key in enumerate(keys)
-        if key is not CITY_AND_HQ_SPACE and (key != EXTRA_CELL or include_extra_cell)
+        if _is_drawn_cell(key, include_extra_cell)
     )
     city_and_hq_left = columns[1] + CARD_WIDTH + mat_layout.gap_before_city_and_hq
     hq_top = mat.height - MARGIN_RIGHT_BOTTOM - CITY_AND_HQ_HEIGHT
@@ -97,6 +99,11 @@ def find_cell(layout: Layout, key: str) -> Cell:
 
 def _size_name(mat: Mat) -> str:
     return f"{mat.width:g}x{mat.height:g}"
+
+
+def _is_drawn_cell(key: str | None, include_extra_cell: bool) -> TypeGuard[str]:
+    """Whether a cell grid entry is a cell to draw: not the City and HQ's space, and not a left-out extra cell."""
+    return key is not CITY_AND_HQ_SPACE and (key != EXTRA_CELL or include_extra_cell)
 
 
 def _column_lefts(mat: Mat) -> tuple[float, ...]:
