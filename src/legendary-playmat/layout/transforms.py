@@ -48,7 +48,7 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
     Raises:
         ValueError: If include_extra_cell is True for a mat that has no extra cell (the 24x14).
     """
-    if include_extra_cell and mat is not Mat.OVERSIZE:
+    if include_extra_cell and not has_extra_cell(mat):
         raise ValueError(f"Only the 28x14 mat has an extra cell, so the {_size_name(mat)} mat can't include one.")
     mat_layout = MAT_LAYOUTS[mat]
     columns = _column_lefts(mat)
@@ -65,8 +65,15 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
 
 
 def has_extra_cell(mat: Mat) -> bool:
-    """Whether a mat has the optional blank cell in its top-left corner. Stub for the acceptance tests."""
-    raise NotImplementedError
+    """Say whether a mat has the optional blank cell in its top-left corner.
+
+    Args:
+        mat: Which mat size to ask about.
+
+    Returns:
+        True if layout_for can include the extra cell for this mat (the 28x14), False if it can't (the 24x14).
+    """
+    return any(EXTRA_CELL in row for row in MAT_LAYOUTS[mat].cell_grid)
 
 
 def find_cell(layout: Layout, key: str) -> Cell:
