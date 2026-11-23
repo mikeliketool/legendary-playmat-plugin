@@ -64,6 +64,11 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
     return Layout(mat, cells, _city(city_and_hq_left, city_top), _headquarters(city_and_hq_left, hq_top))
 
 
+def has_extra_cell(mat: Mat) -> bool:
+    """Whether a mat has the optional blank cell in its top-left corner. Stub for the acceptance tests."""
+    raise NotImplementedError
+
+
 def find_cell(layout: Layout, key: str) -> Cell:
     """Find a cell by its key.
 
