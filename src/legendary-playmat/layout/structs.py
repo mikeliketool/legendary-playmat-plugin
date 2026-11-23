@@ -33,7 +33,16 @@ class District:
 
 @dataclass(frozen=True)
 class City:
-    """The City: an outline with a title, four vertical dividers, and a strip of district labels."""
+    """The City: an outline with a title, four vertical dividers, and a strip of district labels.
+
+    Attributes:
+        outline: The City's border.
+        title_box: The box for the City's title, across the top of the outline.
+        divider_xs: The x of each divider line, in inches from the trim's left edge. Each line runs the full height
+            of the outline.
+        label_strip: The strip across the bottom of the outline that holds the district labels.
+        districts: The five districts, left to right. Each one's label box is its fifth of the label strip.
+    """
 
     outline: MatBox
     title_box: MatBox

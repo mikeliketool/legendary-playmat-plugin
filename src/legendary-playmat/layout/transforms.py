@@ -10,14 +10,16 @@ from layout.consts import (
     CARD_HEIGHT,
     CARD_WIDTH,
     CELL_GRIDS,
-    CITY_GAPS,
+    CITY_AND_HQ_HEIGHT,
+    CITY_AND_HQ_SPACE,
+    CITY_AND_HQ_WIDTH,
     COLUMN_GAP,
     DISTRICT_NAMES,
     EXTRA_CELL,
+    GAP_BEFORE_CITY_AND_HQ,
     LABEL_HEIGHT,
+    LABEL_STRIP_HEIGHT,
     LABELS,
-    LARGE_HEIGHT,
-    LARGE_WIDTH,
     MARGIN_LEFT_TOP,
     MARGIN_RIGHT_BOTTOM,
     ROW_GAP,
@@ -51,15 +53,15 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         raise ValueError(f"Only the 28x14 mat has an extra cell, so the {_size_name(mat)} mat can't include one.")
     columns = _column_lefts(mat)
     cells = tuple(
-        _cell(key, columns[column], ROW_TOPS[row])
+        _cell_at(key, columns[column], ROW_TOPS[row])
         for row, keys in enumerate(CELL_GRIDS[mat])
         for column, key in enumerate(keys)
-        if key is not None and (key != EXTRA_CELL or include_extra_cell)
+        if key is not CITY_AND_HQ_SPACE and (key != EXTRA_CELL or include_extra_cell)
     )
-    large_left = columns[1] + CARD_WIDTH + CITY_GAPS[mat]
-    hq_top = mat.height - MARGIN_RIGHT_BOTTOM - LARGE_HEIGHT
-    city_top = hq_top - ROW_GAP - LARGE_HEIGHT
-    return Layout(mat, cells, _city(large_left, city_top), _headquarters(large_left, hq_top))
+    city_and_hq_left = columns[1] + CARD_WIDTH + GAP_BEFORE_CITY_AND_HQ[mat]
+    hq_top = mat.height - MARGIN_RIGHT_BOTTOM - CITY_AND_HQ_HEIGHT
+    city_top = hq_top - ROW_GAP - CITY_AND_HQ_HEIGHT
+    return Layout(mat, cells, _city(city_and_hq_left, city_top), _headquarters(city_and_hq_left, hq_top))
 
 
 def find_cell(layout: Layout, key: str) -> Cell:
@@ -97,32 +99,34 @@ def _column_lefts(mat: Mat) -> tuple[float, ...]:
             return (first, first + step, last - step, last)
 
 
-def _cell(key: str, left: float, top: float) -> Cell:
+def _cell_at(key: str, left: float, top: float) -> Cell:
     label_box = MatBox(left, top, CARD_WIDTH, LABEL_HEIGHT)
     card = MatBox(left, label_box.bottom, CARD_WIDTH, CARD_HEIGHT)
     return Cell(key, LABELS[key], label_box, card)
 
 
 def _city(left: float, top: float) -> City:
-    district_width = LARGE_WIDTH / len(DISTRICT_NAMES)
-    strip = MatBox(left, top + LARGE_HEIGHT * 3 / 4, LARGE_WIDTH, LARGE_HEIGHT / 4)
-    # Each district's label box is its fifth of the strip, so text drawn in it stays inside the City. The old plugin's
-    # text frames started a third of the way down the strip and hung below the City.
-    districts = tuple(
-        District(name, MatBox(left + number * district_width, strip.top, district_width, strip.height))
-        for number, name in enumerate(DISTRICT_NAMES)
-    )
+    strip = MatBox(left, top + CITY_AND_HQ_HEIGHT - LABEL_STRIP_HEIGHT, CITY_AND_HQ_WIDTH, LABEL_STRIP_HEIGHT)
+    districts = _split_into_districts(strip)
     return City(
-        outline=MatBox(left, top, LARGE_WIDTH, LARGE_HEIGHT),
-        title_box=MatBox(left, top, LARGE_WIDTH, TITLE_HEIGHT),
-        divider_xs=tuple(left + number * district_width for number in range(1, len(DISTRICT_NAMES))),
+        outline=MatBox(left, top, CITY_AND_HQ_WIDTH, CITY_AND_HQ_HEIGHT),
+        title_box=MatBox(left, top, CITY_AND_HQ_WIDTH, TITLE_HEIGHT),
+        divider_xs=tuple(district.label_box.left for district in districts[1:]),
         label_strip=strip,
         districts=districts,
     )
 
 
+def _split_into_districts(label_strip: MatBox) -> tuple[District, ...]:
+    width = label_strip.width / len(DISTRICT_NAMES)
+    return tuple(
+        District(name, MatBox(label_strip.left + number * width, label_strip.top, width, label_strip.height))
+        for number, name in enumerate(DISTRICT_NAMES)
+    )
+
+
 def _headquarters(left: float, top: float) -> Headquarters:
     return Headquarters(
-        outline=MatBox(left, top, LARGE_WIDTH, LARGE_HEIGHT),
-        title_box=MatBox(left, top, LARGE_WIDTH, TITLE_HEIGHT),
+        outline=MatBox(left, top, CITY_AND_HQ_WIDTH, CITY_AND_HQ_HEIGHT),
+        title_box=MatBox(left, top, CITY_AND_HQ_WIDTH, TITLE_HEIGHT),
     )

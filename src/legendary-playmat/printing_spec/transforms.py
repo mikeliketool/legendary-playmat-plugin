@@ -7,12 +7,12 @@ the trim (the finished mat's edge), and only become pixels at drawing time.
 import math
 
 from printing_spec.consts import (
-    CORNER_RADIUS,
-    LABEL_FONT_SIZE,
-    LINE_WIDTH,
-    OUTLINE_THICKNESS,
+    CORNER_RADIUS_INCHES,
+    LABEL_FONT_INCHES,
+    LINE_WIDTH_INCHES,
+    OUTLINE_THICKNESS_INCHES,
     PIXEL_PRECISION,
-    TITLE_FONT_SIZE,
+    TITLE_FONT_INCHES,
     Mat,
 )
 from printing_spec.structs import CanvasBox, MatBox, PrintSettings, Style
@@ -88,11 +88,11 @@ def style_for(settings: PrintSettings) -> Style:
     """
     dpi = settings.dpi
     return Style(
-        label_font_size=_round_half_up(LABEL_FONT_SIZE * dpi),
-        title_font_size=_round_half_up(TITLE_FONT_SIZE * dpi),
-        outline_thickness=_round_half_up(OUTLINE_THICKNESS * dpi),
-        line_width=_round_half_up(LINE_WIDTH * dpi),
-        corner_radius=_round_half_up(CORNER_RADIUS * dpi),
+        label_font_size=_round_half_up(LABEL_FONT_INCHES * dpi),
+        title_font_size=_round_half_up(TITLE_FONT_INCHES * dpi),
+        outline_thickness=_round_half_up(OUTLINE_THICKNESS_INCHES * dpi),
+        line_width=_round_half_up(LINE_WIDTH_INCHES * dpi),
+        corner_radius=_round_half_up(CORNER_RADIUS_INCHES * dpi),
     )
 
 
