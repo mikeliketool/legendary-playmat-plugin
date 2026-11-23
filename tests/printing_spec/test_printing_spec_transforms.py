@@ -10,9 +10,6 @@ from printing_spec.transforms import (
     trim_offset,
 )
 
-# Inches typed as decimals aren't exact in binary floating point, so their products can land just below a whole or
-# half pixel. The rule must still treat them as the whole or half pixel they are on paper.
-
 
 @pytest.mark.parametrize(("dpi", "bleed", "expected"), [(200, 0.29, 58), (180, 0.35, 63)])
 def test_trim_offset_is_not_shifted_by_floating_point_error(dpi: int, bleed: float, expected: int) -> None:
@@ -32,7 +29,7 @@ def test_zero_bleed_makes_the_canvas_the_trim_size() -> None:
 
 
 def test_scaled_sizes_round_halves_up() -> None:
-    # At 225 DPI the old 3 px outline is 4.5 px, which rounds up to 5. Python's round() would give 4.
+    # At 225 DPI the 3 px outline at 150 DPI is 4.5 px, which rounds up to 5. Python's round() would give 4.
     assert style_for(PrintSettings(dpi=225)) == Style(
         label_font_size=81, title_font_size=225, outline_thickness=5, line_width=5, corner_radius=45
     )

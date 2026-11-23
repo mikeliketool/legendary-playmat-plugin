@@ -1,8 +1,8 @@
-"""Acceptance tests for layout.py, confirmed with the user before implementation.
+"""Acceptance tests for the layout: where each cell, the City, and the HQ go on each mat.
 
-At 150 DPI with a 1/4" bleed, the layout must reproduce the old GIMP 2 plugin exactly, except for the City's district
-label boxes (see test_city_matches_the_old_plugin). The constants below are that plugin's pixel values, copied from
-src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas that includes a 1/4" bleed.
+At 150 DPI with a 1/4" bleed, every box must land where it is on the existing mats, except the City's district label
+boxes (see test_city_matches_the_existing_mats). The constants below are positions and sizes on the existing mats,
+in pixels on Inked Gaming's 150 DPI template, bleed included.
 """
 
 from itertools import combinations
@@ -24,22 +24,22 @@ from printing_spec.transforms import (
 CELL_WIDTH = 375
 CELL_HEIGHT = 525
 LABEL_HEIGHT = 65
-LARGE_CELL_WIDTH = 2070
-LARGE_CELL_HEIGHT = 600
-LARGE_LABEL_HEIGHT = 200
+CITY_AND_HQ_WIDTH = 2070
+CITY_AND_HQ_HEIGHT = 600
+TITLE_HEIGHT = 200
 ROW_GAP = 85
 COLUMN_GAP = 70
-OUTSIDE_GAP = 115
-MAIN_SECTION_GAP = 162.5
-FIRST_ROW_Y = OUTSIDE_GAP
-SECOND_ROW_Y = OUTSIDE_GAP + LABEL_HEIGHT + CELL_HEIGHT + ROW_GAP
+EDGE_GAP = 115
+OVERSIZE_GAP_BEFORE_CITY_AND_HQ = 162.5
+FIRST_ROW_Y = EDGE_GAP
+SECOND_ROW_Y = EDGE_GAP + LABEL_HEIGHT + CELL_HEIGHT + ROW_GAP
 THIRD_ROW_Y = SECOND_ROW_Y + LABEL_HEIGHT + CELL_HEIGHT + ROW_GAP
-FIRST_COLUMN_X = OUTSIDE_GAP
-SECOND_COLUMN_X = OUTSIDE_GAP + CELL_WIDTH + COLUMN_GAP
-DISTRICT_WIDTH = LARGE_CELL_WIDTH / 5
+FIRST_COLUMN_X = EDGE_GAP
+SECOND_COLUMN_X = EDGE_GAP + CELL_WIDTH + COLUMN_GAP
+DISTRICT_WIDTH = CITY_AND_HQ_WIDTH / 5
 DISTRICTS = ("Bridge", "Streets", "Rooftops", "Bank", "Sewers")
 
-OLD_CANVAS = {Mat.STANDARD: (3675, 2175), Mat.OVERSIZE: (4275, 2175)}
+TEMPLATE_SIZES = {Mat.STANDARD: (3675, 2175), Mat.OVERSIZE: (4275, 2175)}
 
 LABELS = {
     "extra": "",
@@ -62,10 +62,10 @@ DPIS = [150, 300, 301, 600]
 BLEEDS = [0.0, 0.125, 0.25, 0.5]
 
 
-def old_cell_positions(mat: Mat) -> dict[str, tuple[float, float]]:
-    """Top-left corner of each cell's label box, by cell key, where the old plugin put it."""
-    width, _ = OLD_CANVAS[mat]
-    last_column_x = width - OUTSIDE_GAP - CELL_WIDTH
+def existing_cell_positions(mat: Mat) -> dict[str, tuple[float, float]]:
+    """Top-left corner of each cell's label box, by cell key, where it is on the existing mats."""
+    width, _ = TEMPLATE_SIZES[mat]
+    last_column_x = width - EDGE_GAP - CELL_WIDTH
     second_last_column_x = last_column_x - CELL_WIDTH - COLUMN_GAP
     if mat is Mat.OVERSIZE:
         return {
@@ -98,24 +98,24 @@ def old_cell_positions(mat: Mat) -> dict[str, tuple[float, float]]:
     }
 
 
-def old_large_cell_x(mat: Mat) -> float:
-    """Left edge of the City and HQ in the old plugin."""
+def existing_city_and_hq_x(mat: Mat) -> float:
+    """Left edge of the City and HQ on the existing mats."""
     if mat is Mat.OVERSIZE:
-        return OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + MAIN_SECTION_GAP
-    return OUTSIDE_GAP + CELL_WIDTH * 2 + COLUMN_GAP * 2 + 15
+        return EDGE_GAP + CELL_WIDTH * 2 + COLUMN_GAP + OVERSIZE_GAP_BEFORE_CITY_AND_HQ
+    return EDGE_GAP + CELL_WIDTH * 2 + COLUMN_GAP * 2 + 15
 
 
-def old_hq_y(mat: Mat) -> int:
-    """Top edge of the HQ in the old plugin."""
-    return OLD_CANVAS[mat][1] - OUTSIDE_GAP - LARGE_CELL_HEIGHT
+def existing_hq_y(mat: Mat) -> int:
+    """Top edge of the HQ on the existing mats."""
+    return TEMPLATE_SIZES[mat][1] - EDGE_GAP - CITY_AND_HQ_HEIGHT
 
 
-def assert_matches_old(box: MatBox, x: float, y: float, width: float, height: float) -> None:
-    """At the default settings the box lands on the old pixel box. Old half-pixel edges may be off by half a pixel."""
+def assert_matches_existing(box: MatBox, x: float, y: float, width: float, height: float) -> None:
+    """At the default settings the box lands on the existing mat's box, within half a pixel at half-pixel edges."""
     px = to_canvas(box, PrintSettings())
     edges = [(px.x, x), (px.y, y), (px.x + px.width, x + width), (px.y + px.height, y + height)]
     for actual, expected in edges:
-        assert abs(actual - expected) <= 0.5, f"{px} doesn't match the old box {(x, y, width, height)}"
+        assert abs(actual - expected) <= 0.5, f"{px} doesn't match the existing box {(x, y, width, height)}"
 
 
 def element_parts(layout: Layout) -> list[list[MatBox]]:
@@ -137,18 +137,15 @@ def overlaps(a: MatBox, b: MatBox) -> bool:
     return a.left < b.right and b.left < a.right and a.top < b.bottom and b.top < a.bottom
 
 
-# 1. Mat sizes
-
-
-def test_standard_mat_has_the_old_plugins_eleven_cells() -> None:
+def test_standard_mat_has_eleven_cells() -> None:
     keys = {cell.key for cell in layout_for(Mat.STANDARD).cells}
-    assert keys == set(old_cell_positions(Mat.STANDARD))
+    assert keys == set(existing_cell_positions(Mat.STANDARD))
 
 
 def test_oversize_mat_adds_the_extra_cell_only_when_asked() -> None:
     without = {cell.key for cell in layout_for(Mat.OVERSIZE).cells}
     with_extra = {cell.key for cell in layout_for(Mat.OVERSIZE, include_extra_cell=True).cells}
-    assert with_extra == set(old_cell_positions(Mat.OVERSIZE))
+    assert with_extra == set(existing_cell_positions(Mat.OVERSIZE))
     assert without == with_extra - {"extra"}
 
 
@@ -157,47 +154,41 @@ def test_standard_mat_has_no_extra_cell() -> None:
         layout_for(Mat.STANDARD, include_extra_cell=True)
 
 
-# 4. Matches the old mats (150 DPI, 1/4" bleed)
-
-
 @pytest.mark.parametrize("mat", MATS)
-def test_cells_match_the_old_plugin(mat: Mat) -> None:
+def test_cells_match_the_existing_mats(mat: Mat) -> None:
     layout = layout_for(mat, include_extra_cell=mat is Mat.OVERSIZE)
-    for key, (x, y) in old_cell_positions(mat).items():
+    for key, (x, y) in existing_cell_positions(mat).items():
         cell = find_cell(layout, key)
-        assert_matches_old(cell.label_box, x, y, CELL_WIDTH, LABEL_HEIGHT)
-        assert_matches_old(cell.card, x, y + LABEL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
+        assert_matches_existing(cell.label_box, x, y, CELL_WIDTH, LABEL_HEIGHT)
+        assert_matches_existing(cell.card, x, y + LABEL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
 
 
 @pytest.mark.parametrize("mat", MATS)
-def test_hq_matches_the_old_plugin(mat: Mat) -> None:
+def test_hq_matches_the_existing_mats(mat: Mat) -> None:
     hq = layout_for(mat).hq
-    x, y = old_large_cell_x(mat), old_hq_y(mat)
-    assert_matches_old(hq.outline, x, y, LARGE_CELL_WIDTH, LARGE_CELL_HEIGHT)
-    assert_matches_old(hq.title_box, x, y, LARGE_CELL_WIDTH, LARGE_LABEL_HEIGHT)
+    x, y = existing_city_and_hq_x(mat), existing_hq_y(mat)
+    assert_matches_existing(hq.outline, x, y, CITY_AND_HQ_WIDTH, CITY_AND_HQ_HEIGHT)
+    assert_matches_existing(hq.title_box, x, y, CITY_AND_HQ_WIDTH, TITLE_HEIGHT)
 
 
 @pytest.mark.parametrize("mat", MATS)
-def test_city_matches_the_old_plugin(mat: Mat) -> None:
+def test_city_matches_the_existing_mats(mat: Mat) -> None:
     city = layout_for(mat).city
-    x, y = old_large_cell_x(mat), old_hq_y(mat) - ROW_GAP - LARGE_CELL_HEIGHT
-    strip_y = y + LARGE_CELL_HEIGHT * 0.75
-    strip_height = LARGE_CELL_HEIGHT / 4
-    assert_matches_old(city.outline, x, y, LARGE_CELL_WIDTH, LARGE_CELL_HEIGHT)
-    assert_matches_old(city.title_box, x, y, LARGE_CELL_WIDTH, LARGE_LABEL_HEIGHT)
-    assert_matches_old(city.label_strip, x, strip_y, LARGE_CELL_WIDTH, strip_height)
+    x, y = existing_city_and_hq_x(mat), existing_hq_y(mat) - ROW_GAP - CITY_AND_HQ_HEIGHT
+    strip_y = y + CITY_AND_HQ_HEIGHT * 0.75
+    strip_height = CITY_AND_HQ_HEIGHT / 4
+    assert_matches_existing(city.outline, x, y, CITY_AND_HQ_WIDTH, CITY_AND_HQ_HEIGHT)
+    assert_matches_existing(city.title_box, x, y, CITY_AND_HQ_WIDTH, TITLE_HEIGHT)
+    assert_matches_existing(city.label_strip, x, strip_y, CITY_AND_HQ_WIDTH, strip_height)
     assert len(city.divider_xs) == 4
     for number, divider_x in enumerate(city.divider_xs, start=1):
         assert abs(position_to_pixels(divider_x, PrintSettings()) - (x + DISTRICT_WIDTH * number)) <= 0.5
     assert tuple(district.name for district in city.districts) == DISTRICTS
-    # The old plugin's district text frames started a third of the way down the strip and hung below the City.
+    # On the existing mats the district names start a third of the way down the strip and hang below the City.
     # Here each district's label box is its fifth of the label strip, so text drawn in it stays inside the City.
     for number, district in enumerate(city.districts):
         district_x = x + DISTRICT_WIDTH * number
-        assert_matches_old(district.label_box, district_x, strip_y, DISTRICT_WIDTH, strip_height)
-
-
-# 6. Any setting
+        assert_matches_existing(district.label_box, district_x, strip_y, DISTRICT_WIDTH, strip_height)
 
 
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
@@ -245,9 +236,6 @@ def test_positions_from_the_trim_do_not_depend_on_the_bleed(mat: Mat, extra: boo
     first, *others = [from_trim(bleed) for bleed in BLEEDS]
     for other in others:
         assert other == first
-
-
-# 7. Fixed labels and 8. Cell lookup
 
 
 @pytest.mark.parametrize(("mat", "extra"), LAYOUT_CHOICES)
