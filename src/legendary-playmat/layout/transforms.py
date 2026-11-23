@@ -1,4 +1,4 @@
-"""Layout rules for a Marvel Legendary playmat: where each cell goes on the mat, and finding a cell by its key.
+"""Layout rules for a Marvel Legendary playmat: where each cell, the City and the HQ go, and finding a cell by key.
 
 Pure Python with no GIMP code, so the layout can be tested on its own. Everything is in inches from the trim.
 """
@@ -10,15 +10,28 @@ from layout.consts import (
     CARD_HEIGHT,
     CARD_WIDTH,
     CELL_GRIDS,
+    CITY_GAPS,
     COLUMN_GAP,
+    DISTRICT_NAMES,
     EXTRA_CELL,
     LABEL_HEIGHT,
     LABELS,
+    LARGE_HEIGHT,
+    LARGE_WIDTH,
     MARGIN_LEFT_TOP,
     MARGIN_RIGHT_BOTTOM,
+    ROW_GAP,
     ROW_TOPS,
+    TITLE_HEIGHT,
 )
-from layout.structs import Cell, Layout, UnknownCellError
+from layout.structs import (
+    Cell,
+    City,
+    District,
+    Headquarters,
+    Layout,
+    UnknownCellError,
+)
 
 
 def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
@@ -29,7 +42,7 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         include_extra_cell: Whether to add the blank cell in the 28x14 mat's top-left corner.
 
     Returns:
-        Every cell, in inches from the trim.
+        Every cell, the City, and the HQ, in inches from the trim.
 
     Raises:
         ValueError: If include_extra_cell is True for a mat that has no extra cell (the 24x14).
@@ -43,7 +56,10 @@ def layout_for(mat: Mat, include_extra_cell: bool = False) -> Layout:
         for column, key in enumerate(keys)
         if key is not None and (key != EXTRA_CELL or include_extra_cell)
     )
-    return Layout(mat, cells)
+    large_left = columns[1] + CARD_WIDTH + CITY_GAPS[mat]
+    hq_top = mat.height - MARGIN_RIGHT_BOTTOM - LARGE_HEIGHT
+    city_top = hq_top - ROW_GAP - LARGE_HEIGHT
+    return Layout(mat, cells, _city(large_left, city_top), _headquarters(large_left, hq_top))
 
 
 def find_cell(layout: Layout, key: str) -> Cell:
@@ -85,3 +101,28 @@ def _cell(key: str, left: float, top: float) -> Cell:
     label_box = MatBox(left, top, CARD_WIDTH, LABEL_HEIGHT)
     card = MatBox(left, label_box.bottom, CARD_WIDTH, CARD_HEIGHT)
     return Cell(key, LABELS[key], label_box, card)
+
+
+def _city(left: float, top: float) -> City:
+    district_width = LARGE_WIDTH / len(DISTRICT_NAMES)
+    strip = MatBox(left, top + LARGE_HEIGHT * 3 / 4, LARGE_WIDTH, LARGE_HEIGHT / 4)
+    # Each district's label box is its fifth of the strip, so text drawn in it stays inside the City. The old plugin's
+    # text frames started a third of the way down the strip and hung below the City.
+    districts = tuple(
+        District(name, MatBox(left + number * district_width, strip.top, district_width, strip.height))
+        for number, name in enumerate(DISTRICT_NAMES)
+    )
+    return City(
+        outline=MatBox(left, top, LARGE_WIDTH, LARGE_HEIGHT),
+        title_box=MatBox(left, top, LARGE_WIDTH, TITLE_HEIGHT),
+        divider_xs=tuple(left + number * district_width for number in range(1, len(DISTRICT_NAMES))),
+        label_strip=strip,
+        districts=districts,
+    )
+
+
+def _headquarters(left: float, top: float) -> Headquarters:
+    return Headquarters(
+        outline=MatBox(left, top, LARGE_WIDTH, LARGE_HEIGHT),
+        title_box=MatBox(left, top, LARGE_WIDTH, TITLE_HEIGHT),
+    )

@@ -1,4 +1,4 @@
-"""Printing spec constants for a Marvel Legendary playmat: mat sizes, settings limits, rounding, and scaled sizes."""
+"""Printing spec constants for a Marvel Legendary playmat: mat sizes, limits, safe margin, rounding, scaled sizes."""
 
 from enum import Enum
 from typing import Final
@@ -6,6 +6,8 @@ from typing import Final
 MIN_DPI: Final = 150
 MAX_DPI: Final = 600
 MAX_BLEED: Final = 0.5  # inches. The smallest bleed is 0.
+# Text and important art stay this many inches inside the trim, because the printer's cut can wander.
+SAFE_MARGIN: Final = 0.5
 
 # Inches typed as decimals aren't exact in binary floating point, so 0.29 x 200 comes out as 57.99999999999999.
 # Rounding a product to this many decimal places first lets a whole or half pixel on paper round as one.

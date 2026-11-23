@@ -1,4 +1,4 @@
-"""Layout data types for a Marvel Legendary playmat: the cells, the whole layout, and the unknown-cell error.
+"""Layout data types for a Marvel Legendary playmat: the cells, City, HQ, whole layout, and unknown-cell error.
 
 Pure Python with no GIMP code, so it can be tested on its own. Everything is in inches from the trim (see
 printing_spec.structs.MatBox), and layout.transforms builds it.
@@ -23,6 +23,33 @@ class Cell:
     card: MatBox
 
 
+@dataclass(frozen=True)
+class District:
+    """One of the City's five spaces, with its name label."""
+
+    name: str
+    label_box: MatBox
+
+
+@dataclass(frozen=True)
+class City:
+    """The City: an outline with a title, four vertical dividers, and a strip of district labels."""
+
+    outline: MatBox
+    title_box: MatBox
+    divider_xs: tuple[float, ...]
+    label_strip: MatBox
+    districts: tuple[District, ...]
+
+
+@dataclass(frozen=True)
+class Headquarters:
+    """The HQ row: an outline with a title."""
+
+    outline: MatBox
+    title_box: MatBox
+
+
 class UnknownCellError(KeyError):
     """A layout has no cell with the requested key.
 
@@ -40,3 +67,5 @@ class Layout:
 
     mat: Mat
     cells: tuple[Cell, ...]
+    city: City
+    hq: Headquarters

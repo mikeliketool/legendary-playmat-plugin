@@ -1,4 +1,4 @@
-"""Layout constants for a Marvel Legendary playmat: card sizes, margins, gaps, row tops, cell grids, and labels."""
+"""Layout constants for a Marvel Legendary playmat: card, City and HQ sizes, margins, gaps, cell grids, and labels."""
 
 from collections.abc import Mapping
 from typing import Final
@@ -16,6 +16,9 @@ CARD_HEIGHT: Final = 3.5  # 525 px
 LABEL_HEIGHT: Final = 65 / 150
 ROW_GAP: Final = 85 / 150
 COLUMN_GAP: Final = 70 / 150
+LARGE_WIDTH: Final = 2070 / 150  # City and HQ
+LARGE_HEIGHT: Final = 600 / 150
+TITLE_HEIGHT: Final = 200 / 150
 ROW_TOPS: Final = tuple(MARGIN_LEFT_TOP + row * (LABEL_HEIGHT + CARD_HEIGHT + ROW_GAP) for row in range(3))
 
 EXTRA_CELL: Final = "extra"
@@ -33,6 +36,7 @@ LABELS: Final[Mapping[str, str]] = {
     "villain-deck": "Villain Deck",
     "hero-deck": "Hero Deck",
 }
+DISTRICT_NAMES: Final = ("Bridge", "Streets", "Rooftops", "Bank", "Sewers")
 
 # Each mat's cells by row and column, as they appear on the mat. The City and HQ fill the empty middle.
 CELL_GRIDS: Final[Mapping[Mat, tuple[tuple[str | None, ...], ...]]] = {
@@ -47,3 +51,6 @@ CELL_GRIDS: Final[Mapping[Mat, tuple[tuple[str | None, ...], ...]]] = {
         ("scheme", "twists", "hero-deck", "sidekicks"),
     ),
 }
+
+# Gap between the second column of cells and the City and HQ.
+CITY_GAPS: Final[Mapping[Mat, float]] = {Mat.STANDARD: (70 + 15) / 150, Mat.OVERSIZE: 162.5 / 150}
