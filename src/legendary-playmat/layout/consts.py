@@ -1,6 +1,7 @@
 """Layout constants for a Marvel Legendary playmat: card, City and HQ sizes, margins, gaps, cell grids, and labels."""
 
 from collections.abc import Mapping
+from enum import Enum
 from typing import Final
 
 from printing_spec.consts import TEMPLATE_DPI, Mat
@@ -38,20 +39,48 @@ LABELS: Final[Mapping[str, str]] = {
 }
 DISTRICT_NAMES: Final = ("Bridge", "Streets", "Rooftops", "Bank", "Sewers")
 
-CELL_GRIDS: Final[Mapping[Mat, tuple[tuple[str | None, ...], ...]]] = {
-    Mat.STANDARD: (
-        ("scheme", "twists", "escaped", "wounds", "bystanders"),
-        ("mastermind", "strikes", CITY_AND_HQ_SPACE, CITY_AND_HQ_SPACE, "villain-deck"),
-        ("shield", "sidekicks", CITY_AND_HQ_SPACE, CITY_AND_HQ_SPACE, "hero-deck"),
-    ),
-    Mat.OVERSIZE: (
-        (EXTRA_CELL, "escaped", "wounds", "bystanders"),
-        ("mastermind", "strikes", "villain-deck", "shield"),
-        ("scheme", "twists", "hero-deck", "sidekicks"),
-    ),
-}
 
-GAP_BEFORE_CITY_AND_HQ: Final[Mapping[Mat, float]] = {
-    Mat.STANDARD: (70 + 15) / TEMPLATE_DPI,
-    Mat.OVERSIZE: 162.5 / TEMPLATE_DPI,
+class MatLayout(Enum):
+    """Each mat's layout facts, as (cell grid, columns measured from the left, gap before the City and HQ)."""
+
+    _value_: tuple[tuple[tuple[str | None, ...], ...], int, float]
+
+    STANDARD = (
+        (
+            ("scheme", "twists", "escaped", "wounds", "bystanders"),
+            ("mastermind", "strikes", CITY_AND_HQ_SPACE, CITY_AND_HQ_SPACE, "villain-deck"),
+            ("shield", "sidekicks", CITY_AND_HQ_SPACE, CITY_AND_HQ_SPACE, "hero-deck"),
+        ),
+        3,
+        (70 + 15) / TEMPLATE_DPI,
+    )
+    OVERSIZE = (
+        (
+            (EXTRA_CELL, "escaped", "wounds", "bystanders"),
+            ("mastermind", "strikes", "villain-deck", "shield"),
+            ("scheme", "twists", "hero-deck", "sidekicks"),
+        ),
+        2,
+        162.5 / TEMPLATE_DPI,
+    )
+
+    @property
+    def cell_grid(self) -> tuple[tuple[str | None, ...], ...]:
+        """Cell keys row by row, top to bottom, with CITY_AND_HQ_SPACE where the City and HQ go."""
+        return self._value_[0]
+
+    @property
+    def columns_from_left(self) -> int:
+        """How many columns, counting from the left, are measured from the left margin."""
+        return self._value_[1]
+
+    @property
+    def gap_before_city_and_hq(self) -> float:
+        """Gap in inches between the second column's cards and the City and HQ."""
+        return self._value_[2]
+
+
+MAT_LAYOUTS: Final[Mapping[Mat, MatLayout]] = {
+    Mat.STANDARD: MatLayout.STANDARD,
+    Mat.OVERSIZE: MatLayout.OVERSIZE,
 }
