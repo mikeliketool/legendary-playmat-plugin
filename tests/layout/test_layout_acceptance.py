@@ -111,7 +111,7 @@ def existing_hq_y(mat: Mat) -> int:
 
 
 def assert_matches_existing(box: MatBox, x: float, y: float, width: float, height: float) -> None:
-    """At the default settings the box lands on the existing mat's box, give or take half a pixel at half-pixel edges."""
+    """At the default settings the box lands on the existing mat's box, within half a pixel at half-pixel edges."""
     px = to_canvas(box, PrintSettings())
     edges = [(px.x, x), (px.y, y), (px.x + px.width, x + width), (px.y + px.height, y + height)]
     for actual, expected in edges:
