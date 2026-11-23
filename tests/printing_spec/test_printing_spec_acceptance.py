@@ -1,8 +1,7 @@
-"""Acceptance tests for layout.py, confirmed with the user before implementation.
+"""Acceptance tests for the printing spec: mat sizes, print settings, and how inches become canvas pixels.
 
-At 150 DPI with a 1/4" bleed, the layout must reproduce the old GIMP 2 plugin exactly, except for the City's district
-label boxes (see test_city_matches_the_old_plugin). The constants below are that plugin's pixel values, copied from
-src/legendary_plugin_extension.py (tag gimp2-final). They're on a 150 DPI canvas that includes a 1/4" bleed.
+At Inked Gaming's default of 150 DPI with a 1/4" bleed, the canvas must be exactly the size of their templates, and
+the scaled sizes must match the existing mats.
 """
 
 import pytest
@@ -21,20 +20,14 @@ from printing_spec.transforms import (
     trim_offset,
 )
 
-OLD_CANVAS = {Mat.STANDARD: (3675, 2175), Mat.OVERSIZE: (4275, 2175)}
+TEMPLATE_SIZES = {Mat.STANDARD: (3675, 2175), Mat.OVERSIZE: (4275, 2175)}
 
 MATS = [Mat.STANDARD, Mat.OVERSIZE]
-
-
-# 1. Mat sizes
 
 
 def test_mats_have_their_trim_sizes_in_inches() -> None:
     assert (Mat.STANDARD.width, Mat.STANDARD.height) == (24, 14)
     assert (Mat.OVERSIZE.width, Mat.OVERSIZE.height) == (28, 14)
-
-
-# 2. Settings
 
 
 def test_default_settings_are_150_dpi_and_a_quarter_inch_bleed() -> None:
@@ -52,9 +45,6 @@ def test_settings_inside_the_limits_are_accepted(dpi: int, bleed: float) -> None
 def test_settings_outside_the_limits_are_rejected(dpi: int, bleed: float) -> None:
     with pytest.raises(ValueError):
         PrintSettings(dpi=dpi, bleed=bleed)
-
-
-# 3. One measuring rule
 
 
 def test_canvas_size_rounds_halves_up() -> None:
@@ -79,12 +69,9 @@ def test_box_size_comes_from_its_rounded_edges() -> None:
     assert to_canvas(box, PrintSettings(dpi=301, bleed=0.25)) == CanvasBox(x=226, y=226, width=752, height=1053)
 
 
-# 4. Matches the old mats (150 DPI, 1/4" bleed)
-
-
 @pytest.mark.parametrize("mat", MATS)
-def test_default_canvas_matches_the_old_templates(mat: Mat) -> None:
-    assert canvas_size(mat, PrintSettings()) == OLD_CANVAS[mat]
+def test_default_canvas_matches_inked_gamings_templates(mat: Mat) -> None:
+    assert canvas_size(mat, PrintSettings()) == TEMPLATE_SIZES[mat]
 
 
 @pytest.mark.parametrize("mat", MATS)
@@ -96,18 +83,12 @@ def test_default_trim_is_37_px_in_at_left_and_top_and_38_px_at_right_and_bottom(
     assert height - position_to_pixels(mat.height, settings) == 38
 
 
-# 5. 300 DPI
-
-
 @pytest.mark.parametrize(("mat", "expected"), [(Mat.STANDARD, (7350, 4350)), (Mat.OVERSIZE, (8550, 4350))])
 def test_canvas_at_300_dpi(mat: Mat, expected: tuple[int, int]) -> None:
     assert canvas_size(mat, PrintSettings(dpi=300, bleed=0.25)) == expected
 
 
-# 9. Sizes that scale with DPI
-
-
-def test_sizes_at_150_dpi_match_the_old_plugin() -> None:
+def test_sizes_at_150_dpi_match_the_existing_mats() -> None:
     assert style_for(PrintSettings()) == Style(
         label_font_size=54, title_font_size=150, outline_thickness=3, line_width=3, corner_radius=30
     )
