@@ -29,7 +29,7 @@ def test_zero_bleed_makes_the_canvas_the_trim_size() -> None:
 
 
 def test_scaled_sizes_round_halves_up() -> None:
-    # At 225 DPI the old 3 px outline is 4.5 px, which rounds up to 5. Python's round() would give 4.
+    # At 225 DPI the 3 px outline at 150 DPI is 4.5 px, which rounds up to 5. Python's round() would give 4.
     assert style_for(PrintSettings(dpi=225)) == Style(
         label_font_size=81, title_font_size=225, outline_thickness=5, line_width=5, corner_radius=45
     )

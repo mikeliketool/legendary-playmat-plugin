@@ -14,12 +14,13 @@ SAFE_MARGIN: Final = 0.5
 # Rounding a product to this many decimal places first lets a whole or half pixel on paper round as one.
 PIXEL_PRECISION: Final = 9
 
-GIMP2_DPI: Final = 150
-LABEL_FONT_INCHES: Final = 54 / GIMP2_DPI
-TITLE_FONT_INCHES: Final = 150 / GIMP2_DPI
-OUTLINE_THICKNESS_INCHES: Final = 3 / GIMP2_DPI
-LINE_WIDTH_INCHES: Final = 3 / GIMP2_DPI
-CORNER_RADIUS_INCHES: Final = 30 / GIMP2_DPI
+# Inked Gaming's templates are 150 DPI, and the existing mats' pixel sizes are measured on them.
+TEMPLATE_DPI: Final = 150
+LABEL_FONT_INCHES: Final = 54 / TEMPLATE_DPI
+TITLE_FONT_INCHES: Final = 150 / TEMPLATE_DPI
+OUTLINE_THICKNESS_INCHES: Final = 3 / TEMPLATE_DPI
+LINE_WIDTH_INCHES: Final = 3 / TEMPLATE_DPI
+CORNER_RADIUS_INCHES: Final = 30 / TEMPLATE_DPI
 
 
 class Mat(Enum):

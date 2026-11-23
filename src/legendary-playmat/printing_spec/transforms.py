@@ -84,7 +84,7 @@ def style_for(settings: PrintSettings) -> Style:
         settings: The DPI and bleed. Only the DPI changes the sizes.
 
     Returns:
-        The sizes in pixels. At 150 DPI they're the old plugin's sizes.
+        The sizes in pixels. At 150 DPI they're the existing mats' sizes.
     """
     dpi = settings.dpi
     return Style(
